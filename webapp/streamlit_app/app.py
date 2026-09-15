@@ -71,11 +71,29 @@ def main() -> None:
         icon="⚙️",
         visibility=visibilitas_admin,
     )
+    admin_ambang_settings_page = st.Page(
+        "views/admin_ambang_settings.py",
+        title="Pengaturan Ambang",
+        icon="🚨",
+        visibility=visibilitas_admin,
+    )
+    admin_audit_log_page = st.Page(
+        "views/admin_audit_log.py",
+        title="Audit Log",
+        icon="🗂️",
+        visibility=visibilitas_admin,
+    )
 
     navigation = st.navigation(
         {
             "Menu": [dashboard_page, historis_page, detail_komoditas_page],
-            "Admin": [admin_login_page, admin_input_harga_page, admin_model_settings_page],
+            "Admin": [
+                admin_login_page,
+                admin_input_harga_page,
+                admin_model_settings_page,
+                admin_ambang_settings_page,
+                admin_audit_log_page,
+            ],
         }
     )
     navigation.run()

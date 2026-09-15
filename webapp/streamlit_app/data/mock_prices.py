@@ -1,33 +1,47 @@
-"""Data harga historis — dasar tiruan (random walk), edit admin persisten ke `.pkl`.
+"""Data harga historis — dasar dari dataset riset ASLI, edit admin persisten ke `.pkl`.
 
-Riwayat dasar tiap komoditas masih dibangkitkan sebagai random walk
-deterministik (seed dari slug) karena file `.pkl` riwayat harga sungguhan
-adalah keluaran pipeline model milik pengguna, di luar cakupan proyek ini.
-Namun begitu admin menyimpan harga lewat halaman Input Harga Terbaru,
-perubahan itu **sungguhan** ditulis ke `harga_historis.pkl` di sebelah modul
-ini dan dimuat balik saat aplikasi start — bukan lagi sekadar cache memori
-yang hilang setelah proses berhenti. Kontrak fungsi (`get_price_history`,
-`get_dashboard_cards`) dipertahankan supaya halaman tidak perlu diubah lagi.
+Riwayat dasar tiap komoditas dimuat dari `DATASET-BERAS.csv` (dataset riset
+sungguhan yang juga dipakai melatih model MSTL/GA-LightGBM — lihat
+`_muat_dataset_riset`), BUKAN lagi random walk tiruan. Dataset ini mencakup
+~60 hari data SETELAH akhir data train model, cukup untuk peramalan langsung
+bisa dicoba tanpa menunggu admin mengisi harga dulu (lihat docstring
+`_bangun_riwayat`). Begitu admin menyimpan harga lewat halaman Input Harga
+Terbaru, perubahan itu **sungguhan** ditulis ke `harga_historis.pkl` di
+sebelah modul ini dan dimuat balik saat aplikasi start — bukan lagi sekadar
+cache memori yang hilang setelah proses berhenti. Kontrak fungsi
+(`get_price_history`, `get_dashboard_cards`) dipertahankan supaya halaman
+tidak perlu diubah lagi.
+
+`tambah_harga_baru` juga langsung memicu rerun pra-proses MSTL (lihat
+`_rerun_pra_proses`) atas riwayat terbaru — bukan pelatihan ulang model,
+cuma memastikan data yang baru disimpan admin memang bisa diolah forecaster
+sebelum pengunjung publik memintanya.
 """
 
 from __future__ import annotations
 
+import logging
 import pickle
 import zlib
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from config import get_model_aktif
+import forecast
 from data.mock_commodities import Komoditas, get_komoditas_by_slug, get_komoditas_list
-from data.mock_models import DEFAULT_MODEL_AKTIF, get_info_model
+
+_log = logging.getLogger(__name__)
 
 RENTANG_HARI_MAKS = 90
 _PKL_PATH = Path(__file__).parent / "harga_historis.pkl"
 
+# Harga dasar dipakai HANYA sebagai fallback random walk kalau suatu saat
+# ada komoditas baru yang belum punya kolom di `DATASET-BERAS.csv` — untuk
+# 9 komoditas tetap saat ini, jalur ini tidak pernah terpakai (semuanya ada
+# di dataset riset).
 _HARGA_DASAR = {
     "beras-kualitas-bawah-i": 10_650,
     "beras-kualitas-bawah-ii": 10_150,
@@ -40,21 +54,40 @@ _HARGA_DASAR = {
     "cabai-rawit-merah": 71_250,
 }
 
-# Jam sejak terakhir diperbarui — beda per komoditas supaya kartu terasa
-# nyata (data tidak semuanya diperbarui pada detik yang sama).
-_JAM_SEJAK_DIPERBARUI = {
-    "beras-kualitas-bawah-i": 2,
-    "beras-kualitas-bawah-ii": 2,
-    "beras-kualitas-medium-i": 3,
-    "beras-kualitas-medium-ii": 3,
-    "beras-kualitas-super-i": 4,
-    "beras-kualitas-super-ii": 4,
-    "bawang-merah-ukuran-sedang": 6,
-    "cabai-rawit-hijau": 1,
-    "cabai-rawit-merah": 1,
-}
-
 _cache_riwayat: dict[str, pd.DataFrame] = {}
+_cache_dataset_riset: pd.DataFrame | None = None
+
+
+def _muat_dataset_riset() -> pd.DataFrame:
+    """Muat & bersihkan `DATASET-BERAS.csv` sekali per proses (cached).
+
+    Pra-proses PERSIS sama seperti `code.ipynb` (index tanggal harian lewat
+    `asfreq("D")` + interpolasi berbasis waktu untuk mengisi celah) supaya
+    konsisten dengan data yang dipakai melatih model MSTL/GA-LightGBM —
+    `forecast.py` memuat model hasil riset, modul ini yang memuat dataset
+    mentahnya (satu-satunya pembaca CSV di aplikasi).
+    """
+    global _cache_dataset_riset
+    if _cache_dataset_riset is None:
+        df = pd.read_csv(forecast.RESEARCH_DIR / "DATASET-BERAS.csv")
+        df.index = pd.DatetimeIndex(df["tanggal"], yearfirst=True)
+        df = df.drop(columns=["tanggal"]).asfreq("D")
+        _cache_dataset_riset = df.interpolate(method="time", limit_direction="forward")
+    return _cache_dataset_riset
+
+
+def _riwayat_riset_komoditas(nama_komoditas: str) -> pd.DataFrame | None:
+    """Riwayat harga (Rupiah aktual, kolom tanggal/harga) satu komoditas dari
+    dataset riset, atau `None` kalau kolomnya tidak ada di dataset."""
+    dataset = _muat_dataset_riset()
+    if nama_komoditas not in dataset.columns:
+        return None
+
+    # Nilai CSV dalam RIBUAN rupiah (sama seperti training model — lihat
+    # `forecast.SKALA_HARGA`) — dikonversi ke Rupiah aktual di sini supaya
+    # kontrak `get_price_history` (selalu Rupiah aktual) tetap konsisten.
+    harga = dataset[nama_komoditas].dropna() * forecast.SKALA_HARGA
+    return pd.DataFrame({"tanggal": harga.index, "harga": harga.to_numpy()})
 
 
 def _muat_riwayat_dari_pkl() -> None:
@@ -81,27 +114,36 @@ class KartuHarga:
     diperbarui_pada: datetime
 
 
-@dataclass(frozen=True)
-class HasilPrediksi:
-    harga_sekarang: float
-    harga_prediksi: float
-    persen_perubahan: float
-    model_dipakai: str
-
-
 def _seed_dari_slug(slug: str) -> int:
     return zlib.crc32(slug.encode("utf-8"))
 
 
-def _bangun_riwayat(slug: str, harga_dasar: float, hari: int = RENTANG_HARI_MAKS) -> pd.DataFrame:
+def _bangun_riwayat(slug: str, harga_dasar: float) -> pd.DataFrame:
+    """Riwayat harga PENUH untuk satu komoditas — dari dataset riset ASLI
+    kalau komoditasnya ada di `DATASET-BERAS.csv` (selalu benar untuk 9
+    komoditas tetap saat ini), atau random walk tiruan sebagai fallback.
+
+    Dataset riset mencakup data sampai ~60 hari SETELAH akhir data train
+    model (`mstl.trend.index[-1]`, lihat `forecast.py`) — cukup untuk
+    langsung meramal begitu aplikasi jalan (forecaster butuh minimal
+    `window_size` 30 hari setelah akhir train), TANPA perlu admin mengisi
+    harga dulu. Titik terakhir dataset bukan "hari ini" (data riset berhenti
+    di tanggal tertentu) — itu sebabnya `get_kartu_harga` menampilkan waktu
+    update dari tanggal titik terakhir yang sungguhan, bukan jam-lalu tiruan.
+    """
+    komoditas = get_komoditas_by_slug(slug)
+    riwayat_riset = _riwayat_riset_komoditas(komoditas.nama) if komoditas else None
+    if riwayat_riset is not None:
+        return riwayat_riset
+
     rng = np.random.default_rng(_seed_dari_slug(slug))
-    langkah = rng.normal(loc=0, scale=harga_dasar * 0.006, size=hari)
+    langkah = rng.normal(loc=0, scale=harga_dasar * 0.006, size=RENTANG_HARI_MAKS)
     jalan_acak = np.cumsum(langkah)
     harga = jalan_acak - jalan_acak[-1] + harga_dasar
     harga = np.clip(np.round(harga / 25) * 25, harga_dasar * 0.6, None)
 
     tanggal_akhir = datetime.now().date()
-    tanggal = pd.date_range(end=tanggal_akhir, periods=hari, freq="D")
+    tanggal = pd.date_range(end=tanggal_akhir, periods=RENTANG_HARI_MAKS, freq="D")
     return pd.DataFrame({"tanggal": tanggal, "harga": harga})
 
 
@@ -111,33 +153,6 @@ def get_price_history(slug: str, hari: int = RENTANG_HARI_MAKS) -> pd.DataFrame:
         harga_dasar = _HARGA_DASAR.get(slug, 10_000)
         _cache_riwayat[slug] = _bangun_riwayat(slug, harga_dasar)
     return _cache_riwayat[slug].tail(hari).reset_index(drop=True)
-
-
-def get_mock_prediction(slug: str, hari_ke_depan: int) -> HasilPrediksi:
-    """Prediksi tiruan untuk `hari_ke_depan` hari — pengganti sementara model `.pkl`.
-
-    Memakai model aktif yang dipilih admin di Pengaturan Model: tiap model
-    tiruan punya "karakter" (`faktor_volatilitas`) berbeda, jadi mengganti
-    model aktif benar-benar mengubah hasil prediksi publik, bukan cuma
-    tersimpan di config tanpa efek. Melanjutkan random walk yang sama (seed
-    dari slug) supaya konsisten antar rerun Streamlit untuk model yang sama.
-    Diganti pemanggilnya dengan model `.pkl` asli pada task selanjutnya.
-    """
-    riwayat = get_price_history(slug, hari=1)
-    harga_sekarang = float(riwayat["harga"].iloc[-1])
-
-    nama_model_aktif = get_model_aktif() or DEFAULT_MODEL_AKTIF
-    info_model = get_info_model(nama_model_aktif)
-    faktor_volatilitas = info_model.faktor_volatilitas if info_model else 1.0
-
-    harga_dasar = _HARGA_DASAR.get(slug, 10_000)
-    rng = np.random.default_rng(_seed_dari_slug(slug) ^ hari_ke_depan)
-    langkah = rng.normal(loc=0, scale=harga_dasar * 0.006 * faktor_volatilitas, size=hari_ke_depan)
-    harga_prediksi = harga_sekarang + float(np.sum(langkah))
-    harga_prediksi = max(round(harga_prediksi / 25) * 25, harga_dasar * 0.5)
-
-    persen_perubahan = (harga_prediksi - harga_sekarang) / harga_sekarang * 100
-    return HasilPrediksi(harga_sekarang, harga_prediksi, persen_perubahan, nama_model_aktif)
 
 
 def tambah_harga_baru(slug: str, tanggal, harga: float) -> None:
@@ -162,19 +177,77 @@ def tambah_harga_baru(slug: str, tanggal, harga: float) -> None:
 
     _cache_riwayat[slug] = df.sort_values("tanggal").reset_index(drop=True)
     _simpan_riwayat_ke_pkl()
+    _rerun_pra_proses(slug)
+
+
+def _rerun_pra_proses(slug: str) -> None:
+    """Jalankan ulang pra-proses MSTL & isi ulang cache prediksi (BUKAN
+    pelatihan ulang) begitu admin menyimpan harga baru.
+
+    Dua manfaat sekaligus:
+    1. Masalah data/model untuk komoditas ini ketahuan saat itu juga (di
+       halaman admin), bukan baru muncul belakangan saat pengunjung publik
+       meminta prediksi.
+    2. Cache `forecast.ramalkan_harga` (kunci dari isi `riwayat`) langsung
+       terisi ulang untuk ke-3 horizon — kunjungan publik BERIKUTNYA ke
+       Dashboard/Detail Komoditas/Data Historis untuk komoditas ini langsung
+       kena cache-hit, bukan menunggu forecaster jalan saat halaman dibuka.
+       Entri cache lama (riwayat sebelum diedit) otomatis tidak pernah
+       terpakai lagi karena kuncinya sudah beda — tidak perlu invalidasi
+       manual, lihat docstring `forecast.ramalkan_harga`.
+    """
+    komoditas = get_komoditas_by_slug(slug)
+    if komoditas is None:
+        return
+
+    try:
+        trend_model = forecast.muat_trend_model()
+        seasonal_model = forecast.muat_seasonal_model()
+        if komoditas.nama not in trend_model or komoditas.nama not in seasonal_model:
+            return
+        riwayat = get_price_history(slug, hari=RENTANG_HARI_MAKS)
+        forecast.susun_residual_mstl(riwayat, trend_model[komoditas.nama], seasonal_model[komoditas.nama])
+
+        for horizon in forecast.HORIZON_TERSEDIA:
+            forecast.ramalkan_harga(riwayat, komoditas.nama, horizon)
+    except forecast.ModelRisetError:
+        # Artefak model riset belum/tidak tersedia, atau riwayat belum cukup
+        # panjang untuk forecaster — bukan tanggung jawab tambah_harga_baru
+        # untuk menggagalkan penyimpanan harga karena itu.
+        pass
+    except Exception:
+        # Kegagalan TAK terduga di pra-proses/cache-warm — harga admin SUDAH
+        # tersimpan di atas (baris `_simpan_riwayat_ke_pkl()`) sebelum fungsi
+        # ini dipanggil, jadi kegagalan di sini tidak boleh sampai membuat
+        # halaman admin nge-crash / terlihat seperti penyimpanan gagal.
+        # Dicatat ke log server supaya operator tetap bisa melacaknya.
+        _log.exception("Gagal rerun pra-proses/isi cache untuk %s", slug)
 
 
 def get_kartu_harga(slug: str) -> KartuHarga | None:
-    """Harga terbaru + waktu update untuk satu komoditas (dipakai kartu & hero detail)."""
+    """Harga terbaru + waktu update untuk satu komoditas (dipakai kartu & hero detail).
+
+    `None` juga kalau `riwayat` kosong (bukan cuma komoditas tak dikenal) —
+    saat ini tak akan pernah terjadi untuk 9 komoditas tetap (`_bangun_riwayat`
+    selalu berhasil memuat dari dataset riset), tapi menjaga kontrak "None
+    kalau data belum ada" tetap berlaku untuk jalur fallback random walk
+    (komoditas di luar dataset riset).
+    """
     komoditas = get_komoditas_by_slug(slug)
     if komoditas is None:
         return None
 
     riwayat = get_price_history(slug, hari=2)
+    if riwayat.empty:
+        return None
     harga_terbaru = float(riwayat["harga"].iloc[-1])
     harga_kemarin = float(riwayat["harga"].iloc[0]) if len(riwayat) > 1 else harga_terbaru
-    jam_lalu = _JAM_SEJAK_DIPERBARUI.get(slug, 2)
-    diperbarui_pada = datetime.now() - timedelta(hours=jam_lalu)
+    # Waktu update = tanggal titik harga TERAKHIR yang sungguhan (bukan lagi
+    # jam-lalu tiruan) — `format_waktu_pembaruan` otomatis jatuh ke format
+    # tanggal absolut kalau titik itu lebih dari 24 jam lalu, yang biasanya
+    # benar di sini: riwayat riset berhenti di data train+test model, bisa
+    # beberapa minggu sebelum hari ini sampai admin mengisi harga terbaru.
+    diperbarui_pada = riwayat["tanggal"].iloc[-1].to_pydatetime()
     return KartuHarga(komoditas, harga_terbaru, harga_kemarin, diperbarui_pada)
 
 

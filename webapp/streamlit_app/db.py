@@ -1,9 +1,10 @@
 """Log aktivitas (SQLite ringan) — satu-satunya penggunaan database di aplikasi.
 
 Sesuai PRD: database tidak pernah menyimpan data harga, komoditas, hasil
-prediksi, maupun akun. Hanya audit ringan — log login/logout admin (tanpa
-tabel `users`, identitas cukup peran "admin") dan nantinya log prediksi
-publik anonim (ditambahkan pada task tersendiri).
+prediksi, maupun akun. Hanya audit ringan — login/logout admin (tanpa tabel
+`users`, identitas cukup peran "admin") DAN perubahan data yang admin buat
+(harga, model aktif, ambang EWS) supaya audit log benar-benar bisa
+menelusuri APA yang berubah, bukan cuma KAPAN admin masuk/keluar.
 """
 
 from __future__ import annotations
@@ -27,19 +28,30 @@ def _get_connection() -> sqlite3.Connection:
         )
         """
     )
+    # Migrasi ringan: kolom `detail` (opsional) ditambahkan belakangan untuk
+    # mencatat APA yang berubah (mis. "Beras Kualitas Bawah I: Rp 13.500"),
+    # bukan cuma nama aksi generik. SQLite tak punya "ADD COLUMN IF NOT
+    # EXISTS", jadi dicek dulu lewat PRAGMA — idempoten, aman dipanggil
+    # ulang tiap koneksi baru dibuka.
+    kolom = {baris[1] for baris in conn.execute("PRAGMA table_info(admin_login_logs)")}
+    if "detail" not in kolom:
+        conn.execute("ALTER TABLE admin_login_logs ADD COLUMN detail TEXT")
     return conn
 
 
-def catat_aktivitas_admin(aksi: str, sesi: str) -> None:
-    """Catat satu baris log login/logout admin.
+def catat_aktivitas_admin(aksi: str, sesi: str, detail: str | None = None) -> None:
+    """Catat satu baris log aktivitas admin.
 
-    `aksi`: "login" atau "logout". `sesi`: penanda sesi tab admin, supaya
-    pasangan login-logout yang sama bisa dikorelasikan saat audit.
+    `aksi`: "login"/"logout" (sesi admin) atau aksi perubahan data —
+    "harga_diperbarui", "model_diubah", "ambang_diubah". `sesi`: penanda
+    sesi tab admin (lihat `auth.sesi_admin_saat_ini`), supaya semua aksi
+    dalam satu sesi login bisa dikorelasikan saat audit. `detail`: ringkasan
+    APA yang berubah, opsional (kosong untuk login/logout).
     """
     with _get_connection() as conn:
         conn.execute(
-            "INSERT INTO admin_login_logs (waktu, aksi, sesi) VALUES (?, ?, ?)",
-            (datetime.now().isoformat(timespec="seconds"), aksi, sesi),
+            "INSERT INTO admin_login_logs (waktu, aksi, sesi, detail) VALUES (?, ?, ?, ?)",
+            (datetime.now().isoformat(timespec="seconds"), aksi, sesi, detail),
         )
 
 
@@ -48,6 +60,6 @@ def ambil_log_admin(batas: int = 50) -> list[sqlite3.Row]:
     with _get_connection() as conn:
         conn.row_factory = sqlite3.Row
         return conn.execute(
-            "SELECT waktu, aksi, sesi FROM admin_login_logs ORDER BY id DESC LIMIT ?",
+            "SELECT waktu, aksi, sesi, detail FROM admin_login_logs ORDER BY id DESC LIMIT ?",
             (batas,),
         ).fetchall()

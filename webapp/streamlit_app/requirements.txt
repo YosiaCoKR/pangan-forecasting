@@ -2,3 +2,9 @@ streamlit>=1.36
 pandas
 plotly
 python-dotenv
+joblib
+scikit-learn
+statsmodels
+sktime
+skforecast
+lightgbm

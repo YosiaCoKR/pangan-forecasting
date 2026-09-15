@@ -1,8 +1,12 @@
 """Tampilan detail komoditas: hero info harga, grafik historis + garis prediksi.
 
+Prediksi memakai model riset asli lewat `forecast.ramalkan_hasil_horizon`
+(MSTL + GA-LightGBM, tanpa pelatihan ulang) — bukan lagi
+`data.mock_prices.get_mock_prediction`. Panel kontrol prediksi (horizon
+picker, tombol, hasil) ada di `komponen_prediksi.panel_prediksi` — komponen
+bersama supaya halaman lain yang butuh kontrol serupa tak perlu duplikasi.
 Anotasi ambang batas & pop-up peringatan dini ditambahkan pada task
-tersendiri — di sini fokus pada grafik (riwayat + garis prediksi) dan
-panel kontrol prediksi.
+tersendiri — di sini fokus pada grafik (riwayat + garis prediksi).
 """
 
 from __future__ import annotations
@@ -10,12 +14,13 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+import ews
+import forecast
 from charting import gambar_grafik_harga
 from data.mock_commodities import get_komoditas_by_slug
-from data.mock_prices import HasilPrediksi, get_kartu_harga, get_mock_prediction, get_price_history
+from data.mock_prices import get_kartu_harga, get_price_history
 from formatting import format_rupiah, format_waktu_pembaruan, tren_status
-
-RENTANG_PREDIKSI = {"1 Hari": 1, "7 Hari": 7, "30 Hari": 30}
+from komponen_prediksi import panel_prediksi
 
 _KELAS_TREN_HERO = {
     "naik": "ppj-hero-trend-up",
@@ -25,28 +30,38 @@ _KELAS_TREN_HERO = {
 
 
 def _gambar_chart(
-    slug: str,
+    riwayat: pd.DataFrame,
     unit: str,
     hari_ke_depan: int | None = None,
-    hasil: HasilPrediksi | None = None,
+    hasil: forecast.HasilPeramalan | None = None,
+    peringatan_aktif: bool = False,
 ) -> None:
-    riwayat = get_price_history(slug, hari=90)
+    if riwayat.empty:
+        # Sama seperti historis.py — riwayat kosong (mis. komoditas baru
+        # tanpa data harga sama sekali) tetap dapat placeholder rapi,
+        # bukan grafik Plotly kosong tanpa penjelasan.
+        st.markdown(
+            '<div class="ppj-placeholder">Data historis belum tersedia untuk komoditas ini.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
     ada_prediksi = hari_ke_depan is not None and hasil is not None
 
     if not ada_prediksi:
         gambar_grafik_harga(riwayat, unit)
         return
 
-    tanggal_prediksi = riwayat["tanggal"].iloc[-1] + pd.Timedelta(days=hari_ke_depan)
-    persen = hasil.persen_perubahan if hari_ke_depan == 30 else None
     gambar_grafik_harga(
         riwayat,
         unit,
-        prediksi_tanggal=tanggal_prediksi,
-        prediksi_harga_sekarang=hasil.harga_sekarang,
-        prediksi_harga=hasil.harga_prediksi,
+        trajektori_prediksi=hasil.trajektori,
         prediksi_label=f"Prediksi {hari_ke_depan} hari",
-        prediksi_persen=persen,
+        prediksi_persen=hasil.persen_perubahan,
+        # Titik yang memicu EWS selalu di H+30 (lihat `ews.HORIZON_EWS`) —
+        # cuma disorot kalau pengguna memang sedang melihat lintasan 30 hari,
+        # supaya titik yang disorot benar-benar ada di grafik yang tampil.
+        sorot_peringatan=peringatan_aktif and hari_ke_depan == ews.HORIZON_EWS,
     )
 
 
@@ -81,6 +96,46 @@ def _gambar_hero(slug: str) -> None:
     )
 
 
+def _detail_peringatan(peringatan: ews.HasilPeringatan) -> str:
+    if peringatan.alasan == "persen":
+        return f"naik **{peringatan.persen_perubahan:+.1f}%** (ambang: {peringatan.ambang_persen:.0f}%)"
+    return f"mencapai **Rp {format_rupiah(peringatan.harga_prediksi)}** (ambang: Rp {format_rupiah(peringatan.ambang_harga_tetap)})"
+
+
+@st.dialog("⚠️ Peringatan Dini Harga")
+def _popup_peringatan(nama_komoditas: str, peringatan: ews.HasilPeringatan) -> None:
+    st.write(f"Harga **{nama_komoditas}** diprediksi {_detail_peringatan(peringatan)} dalam 30 hari ke depan.")
+    if st.button("Tutup", width="stretch"):
+        st.rerun()
+
+
+def _gambar_peringatan(slug: str, riwayat: pd.DataFrame, nama_komoditas: str) -> bool:
+    """Banner (selalu terlihat) + pop-up sekali per sesi kalau prediksi H+30
+    melewati ambang komoditas ini. Mengembalikan True kalau peringatan
+    aktif, supaya grafik (`_gambar_chart`) tahu perlu menyorot titik H+30
+    atau tidak saat pengguna sedang melihat lintasan 30 hari.
+
+    Pop-up cuma muncul SEKALI per komoditas per sesi (bukan tiap rerun
+    skrip, mis. tiap klik tombol lain di halaman ini) — ditandai lewat
+    session_state, supaya tidak mengganggu.
+    """
+    peringatan = ews.periksa_peringatan(riwayat, slug, nama_komoditas)
+    if peringatan is None or not peringatan.aktif:
+        return False
+
+    st.warning(
+        f"⚠️ **Peringatan Dini** — harga {nama_komoditas} diprediksi "
+        f"{_detail_peringatan(peringatan)} dalam 30 hari ke depan."
+    )
+
+    kunci_sudah_tampil = f"peringatan-popup-tampil-{slug}"
+    if not st.session_state.get(kunci_sudah_tampil):
+        st.session_state[kunci_sudah_tampil] = True
+        _popup_peringatan(nama_komoditas, peringatan)
+
+    return True
+
+
 def tampilkan_detail(slug: str) -> None:
     komoditas = get_komoditas_by_slug(slug)
     if komoditas is None:
@@ -93,46 +148,19 @@ def tampilkan_detail(slug: str) -> None:
 
     _gambar_hero(slug)
 
-    rentang_terpilih = st.session_state.get(f"prediksi-aktif-{slug}")
-    hasil = get_mock_prediction(slug, rentang_terpilih) if rentang_terpilih else None
+    riwayat = get_price_history(slug, hari=90)
+    peringatan_aktif = _gambar_peringatan(slug, riwayat, komoditas.nama)
 
     kolom_chart, kolom_prediksi = st.columns([3, 1], gap="medium")
 
-    with kolom_chart:
-        st.markdown("#### Grafik Harga")
-        _gambar_chart(slug, komoditas.unit, rentang_terpilih, hasil)
-
     with kolom_prediksi:
         st.markdown("#### Prediksi Harga")
-        with st.container(border=True):
-            label_rentang = st.segmented_control(
-                "Rentang prediksi",
-                options=list(RENTANG_PREDIKSI.keys()),
-                default="7 Hari",
-                key=f"rentang-prediksi-{slug}",
-                label_visibility="collapsed",
-            )
-            if st.button(
-                "Prediksi",
-                key=f"tombol-prediksi-{slug}",
-                width="stretch",
-                disabled=label_rentang is None,
-            ):
-                st.session_state[f"prediksi-aktif-{slug}"] = RENTANG_PREDIKSI[label_rentang]
-                st.rerun()
+        with st.container(border=True, key=f"kartu-prediksi-{slug}"):
+            rentang_terpilih, hasil = panel_prediksi(slug, riwayat, komoditas.nama)
 
-            if hasil:
-                delta = None
-                if rentang_terpilih == 30:
-                    delta = f"{hasil.persen_perubahan:+.2f}% dalam 30 hari"
-                st.metric(
-                    label=f"Prediksi {rentang_terpilih} hari lagi",
-                    value=f"Rp {format_rupiah(hasil.harga_prediksi)}",
-                    delta=delta,
-                )
-                st.caption(f"Dihitung dengan model **{hasil.model_dipakai}**.")
-            else:
-                st.caption("Pilih rentang lalu klik **Prediksi** untuk melihat hasilnya.")
+    with kolom_chart:
+        st.markdown("#### Grafik Harga")
+        _gambar_chart(riwayat, komoditas.unit, rentang_terpilih, hasil, peringatan_aktif)
 
 
 _slug_terpilih = st.session_state.get("komoditas_dipilih")

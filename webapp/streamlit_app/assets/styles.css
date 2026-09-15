@@ -1,4 +1,13 @@
-/* Prediksi Pangan Jogja — tema kustom */
+/* Prediksi Pangan Jogja — tema kustom
+ *
+ * Semua warna & gaya visual kustom aplikasi dipusatkan di sini (bukan
+ * inline style="..." di halaman) — kecualinya cuma warna grafik Plotly di
+ * `charting.py`, yang teknisnya tak bisa membaca CSS (dirender lewat JSON
+ * ke JS, bukan DOM), jadi tetap didefinisikan sebagai konstanta Python.
+ *
+ * Struktur berkas: variabel akar → layout dasar → utilitas → Hero (publik
+ * & detail) → Kartu Dashboard → badge tren → placeholder kosong.
+ */
 
 :root {
     --ppj-primary: #1f8a4c;
@@ -6,41 +15,119 @@
     --ppj-bg-soft: #f4faf6;
     --ppj-border: #e1e8e4;
     --ppj-text-muted: #6b7a72;
+    --ppj-text-strong: #1c2b23;
+    --ppj-card-bg: #ffffff;
+    /* Teks harga di `.ppj-card`/`.ppj-hero-trend-down` — token terpisah dari
+       `--ppj-primary-dark` (dipakai juga untuk gradient hero) supaya nilainya
+       bisa dibuat lebih terang khusus untuk mode gelap tanpa ikut mengubah
+       gradient hero yang warnanya sudah aman di kedua tema. */
+    --ppj-price-text: var(--ppj-primary-dark);
+    /* Warna semantik "harga naik" (buruk bagi konsumen) — satu token,
+       dipakai konsisten di badge tren Dashboard maupun Detail Komoditas.
+       Sebelumnya dua shade merah berbeda dipakai terpisah di dua tempat
+       (#c0392b vs rgba(220,53,69,.85)) tanpa sengaja; disatukan di sini. */
+    --ppj-naik: #c0392b;
+    --ppj-naik-bg: rgba(192, 57, 43, 0.85);
+
+    /* Skala jarak — cuma nilai yang genuinely berulang (≥2 tempat) yang
+       ditoken-kan di sini, supaya "sama artinya" benar-benar satu sumber,
+       bukan diketik ulang dan bisa melenceng diam-diam. Nilai yang cuma
+       dipakai sekali (mis. padding kartu 1rem 1.1rem) dibiarkan literal —
+       men-token-kan nilai unik cuma menambah lapisan tanpa manfaat. */
+    --ppj-space-3xs: 0.15rem;
+    --ppj-space-2xs: 0.35rem;
+    --ppj-space-xs: 0.6rem;
+    --ppj-space-sm: 0.75rem;
+    --ppj-space-md: 1rem;
+    --ppj-space-lg: 1.5rem;
+    --ppj-space-xl: 2rem;
+}
+
+/* Mode gelap — cuma token WARNA yang ditimpa (bukan jarak/layout). Dipicu
+   otomatis dari preferensi OS/browser pengguna, sama seperti tema bawaan
+   Streamlit sendiri (`.streamlit/config.toml` sengaja tak menetapkan
+   `base`) — supaya elemen kustom (`.ppj-*`) selalu "selaras" dengan mode
+   yang sedang aktif, bukan cuma widget native Streamlit yang ikut beradaptasi
+   sementara placeholder/kartu kustom tetap terang-melekat. Gradient hero
+   (`--ppj-primary`/`--ppj-primary-dark`) sengaja TIDAK ditimpa — teksnya
+   putih tetap, jadi kontrasnya sudah aman di kedua tema. */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --ppj-bg-soft: #182420;
+        --ppj-border: #2c3a34;
+        --ppj-text-muted: #9fb3a8;
+        --ppj-text-strong: #eef5f0;
+        --ppj-card-bg: #171d1a;
+        --ppj-price-text: #3fcf82;
+    }
 }
 
 .block-container {
-    padding-top: 2rem;
+    padding-top: var(--ppj-space-xl);
     padding-bottom: 3rem;
     max-width: 1200px;
 }
 
+/* Utilitas jarak — pengganti inline style="height:...", supaya pengaturan
+   jarak antar-seksi tidak tersebar sebagai gaya ad-hoc di tiap halaman. */
+.ppj-spacer-sm {
+    height: 0.5rem;
+}
+
+.ppj-spacer-md {
+    height: var(--ppj-space-sm);
+}
+
+/* === Hero (banner hijau di puncak tiap halaman) === */
+
 .ppj-hero {
-    padding: 1.25rem 1.5rem;
+    padding: 1.25rem var(--ppj-space-lg);
     border-radius: 16px;
     background: linear-gradient(135deg, var(--ppj-primary) 0%, var(--ppj-primary-dark) 100%);
     color: white;
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--ppj-space-lg);
 }
 
 .ppj-hero h1 {
     margin: 0;
     font-size: 1.6rem;
+    /* Eksplisit (bukan andalkan default <h1> Streamlit) — supaya judul
+       hero tetap tebal & seragam di semua halaman walau tema bawaan
+       Streamlit berubah di versi mendatang. Sama untuk `.ppj-card h4`. */
+    font-weight: 700;
 }
 
 .ppj-hero p {
-    margin: 0.35rem 0 0;
+    margin: var(--ppj-space-2xs) 0 0;
     opacity: 0.9;
     font-size: 0.95rem;
 }
 
+/* Panel prediksi (`komponen_prediksi.panel_prediksi`, dipasang di dalam
+   `st.container(border=True, key="kartu-prediksi-...")` di Dashboard,
+   Detail Komoditas, & Data Historis) — cuma radius sudut yang disamakan
+   dengan `.ppj-card` (14px, bukan 8px bawaan Streamlit). Warna latar/teks
+   SENGAJA tidak disentuh: kontainer ini isinya widget Streamlit asli
+   (segmented_control, metric, dst.) yang warnanya sendiri sudah otomatis
+   ikut tema terang/gelap pengguna — memaksa warna di sini berisiko bikin
+   teks tak terbaca (mis. teks putih di atas latar putih di mode gelap).
+   `key=` di st.container menghasilkan class `st-key-<key>` (Streamlit
+   ≥1.31) — selector substring di bawah supaya satu aturan berlaku untuk
+   semua panel walau key-nya beda per komoditas. */
+div[class*="st-key-kartu-prediksi"] {
+    border-radius: 14px !important;
+}
+
+/* === Kartu Dashboard (grid 9 komoditas) === */
+
 .ppj-card {
     border: 1px solid var(--ppj-border);
     border-radius: 14px;
-    padding: 1rem 1.1rem;
-    background: white;
+    padding: var(--ppj-space-md) 1.1rem;
+    background: var(--ppj-card-bg);
     box-shadow: 0 1px 3px rgba(16, 24, 20, 0.06);
     height: 100%;
-    margin-bottom: 0.6rem;
+    margin-bottom: var(--ppj-space-xs);
     transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 
@@ -53,7 +140,7 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    margin-bottom: 0.35rem;
+    margin-bottom: var(--ppj-space-2xs);
 }
 
 .ppj-card-icon {
@@ -64,14 +151,15 @@
 .ppj-card h4 {
     margin: 0;
     font-size: 1rem;
-    color: #1c2b23;
+    font-weight: 700;
+    color: var(--ppj-text-strong);
 }
 
 .ppj-card .ppj-price {
     font-size: 1.35rem;
     font-weight: 700;
-    color: var(--ppj-primary-dark);
-    margin: 0.15rem 0;
+    color: var(--ppj-price-text);
+    margin: var(--ppj-space-3xs) 0;
 }
 
 .ppj-card .ppj-unit {
@@ -84,17 +172,17 @@
 .ppj-trend-down,
 .ppj-trend-flat {
     display: inline-block;
-    margin: 0 0 0.35rem;
+    margin: 0 0 var(--ppj-space-2xs);
     font-size: 0.8rem;
     font-weight: 600;
 }
 
 .ppj-trend-up {
-    color: #c0392b;
+    color: var(--ppj-naik);
 }
 
 .ppj-trend-down {
-    color: #1f8a4c;
+    color: var(--ppj-primary);
 }
 
 .ppj-trend-flat {
@@ -107,18 +195,20 @@
     color: var(--ppj-text-muted);
 }
 
+/* === Hero Detail (halaman Detail Komoditas) === */
+
 .ppj-hero-detail {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 1rem 1.5rem;
+    gap: var(--ppj-space-md) var(--ppj-space-lg);
 }
 
 .ppj-hero-detail-head {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: var(--ppj-space-sm);
 }
 
 .ppj-hero-detail-icon {
@@ -129,7 +219,7 @@
 .ppj-hero-detail-price {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: var(--ppj-space-xs);
     flex-wrap: wrap;
 }
 
@@ -148,18 +238,21 @@
 .ppj-hero-trend-down,
 .ppj-hero-trend-flat {
     display: inline-block;
-    padding: 0.15rem 0.6rem;
+    padding: var(--ppj-space-3xs) var(--ppj-space-xs);
     border-radius: 999px;
     font-size: 0.8rem;
     font-weight: 600;
 }
 
 .ppj-hero-trend-up {
-    background: rgba(220, 53, 69, 0.85);
+    background: var(--ppj-naik-bg);
     color: white;
 }
 
 .ppj-hero-trend-down {
+    /* Latar badge ini SELALU nyaris-putih (bukan ikut tema) — jadi teksnya
+       tetap pakai --ppj-primary-dark (bukan --ppj-price-text) supaya
+       kontrasnya tidak ikut berubah warna terang di mode gelap. */
     background: rgba(255, 255, 255, 0.9);
     color: var(--ppj-primary-dark);
 }
@@ -169,10 +262,12 @@
     color: white;
 }
 
+/* === Placeholder (data kosong / belum tersedia) === */
+
 .ppj-placeholder {
     border: 1px dashed var(--ppj-border);
     border-radius: 14px;
-    padding: 2rem;
+    padding: var(--ppj-space-xl);
     text-align: center;
     color: var(--ppj-text-muted);
     background: var(--ppj-bg-soft);

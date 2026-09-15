@@ -10,9 +10,10 @@ from datetime import date
 
 import streamlit as st
 
-from auth import require_admin
+from auth import require_admin, sesi_admin_saat_ini, tombol_logout
 from data.mock_commodities import get_komoditas_list
 from data.mock_prices import tambah_harga_baru
+from db import catat_aktivitas_admin
 from formatting import format_rupiah
 
 require_admin()
@@ -53,8 +54,25 @@ with kolom_form:
                 st.error("Harga harus lebih besar dari 0.")
             else:
                 komoditas_terpilih = next(k for k in komoditas_list if k.nama == nama_terpilih)
-                tambah_harga_baru(komoditas_terpilih.slug, tanggal_terpilih, harga_baru)
-                st.success(
-                    f"Harga {komoditas_terpilih.nama} pada {tanggal_terpilih.strftime('%d %b %Y')} "
-                    f"disimpan: Rp {format_rupiah(harga_baru)}."
-                )
+                try:
+                    tambah_harga_baru(komoditas_terpilih.slug, tanggal_terpilih, harga_baru)
+                except OSError as exc:
+                    # Kegagalan tulis `.pkl` (disk penuh, berkas terkunci, dst.) —
+                    # jangan biarkan traceback mentah tampil ke admin.
+                    st.error(f"Gagal menyimpan harga: {exc}")
+                else:
+                    catat_aktivitas_admin(
+                        "harga_diperbarui",
+                        sesi_admin_saat_ini(),
+                        detail=(
+                            f"{komoditas_terpilih.nama} @ {tanggal_terpilih.strftime('%d %b %Y')}: "
+                            f"Rp {format_rupiah(harga_baru)}"
+                        ),
+                    )
+                    st.success(
+                        f"Harga {komoditas_terpilih.nama} pada {tanggal_terpilih.strftime('%d %b %Y')} "
+                        f"disimpan: Rp {format_rupiah(harga_baru)}. Prediksi di halaman publik otomatis "
+                        f"memakai data terbaru ini pada permintaan berikutnya."
+                    )
+
+tombol_logout()

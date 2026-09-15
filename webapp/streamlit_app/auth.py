@@ -48,8 +48,11 @@ def masuk_sebagai_admin() -> None:
     st.session_state[_SESSION_KEY] = True
 
 
-def _sesi_id() -> str:
-    """Penanda sesi tab admin (bukan identitas pengguna) — dipakai di log."""
+def sesi_admin_saat_ini() -> str:
+    """Penanda sesi tab admin (bukan identitas pengguna) — dipakai di log
+    aktivitas, baik login/logout di sini maupun perubahan data (harga, model
+    aktif, ambang EWS) yang dicatat dari halaman admin masing-masing, supaya
+    semua aksi dalam satu sesi login bisa dikorelasikan saat audit."""
     if _SESI_ID_KEY not in st.session_state:
         st.session_state[_SESI_ID_KEY] = uuid.uuid4().hex[:12]
     return st.session_state[_SESI_ID_KEY]
@@ -65,14 +68,14 @@ def login(username: str, kata_sandi: str) -> bool:
     """
     if username == username_admin() and kata_sandi == kata_sandi_admin():
         masuk_sebagai_admin()
-        catat_aktivitas_admin("login", _sesi_id())
+        catat_aktivitas_admin("login", sesi_admin_saat_ini())
         return True
     return False
 
 
 def keluar_dari_admin() -> None:
     if admin_sudah_masuk():
-        catat_aktivitas_admin("logout", _sesi_id())
+        catat_aktivitas_admin("logout", sesi_admin_saat_ini())
     st.session_state.pop(_SESSION_KEY, None)
 
 
@@ -88,3 +91,15 @@ def require_admin() -> None:
             "Buka halaman **Panel Admin** di menu untuk masuk."
         )
         st.stop()
+
+
+def tombol_logout() -> None:
+    """Tombol keluar admin — dipasang di tiap halaman kerja admin (Input
+    Harga, Pengaturan Model, Pengaturan Ambang), bukan cuma di hub Panel
+    Admin, supaya admin bisa logout dari halaman manapun tanpa harus
+    navigasi balik ke hub dulu.
+    """
+    st.markdown('<div class="ppj-spacer-sm"></div>', unsafe_allow_html=True)
+    if st.button("Kunci Panel Admin"):
+        keluar_dari_admin()
+        st.rerun()

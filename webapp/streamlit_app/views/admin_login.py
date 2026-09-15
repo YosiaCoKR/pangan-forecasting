@@ -1,16 +1,16 @@
 """Halaman login Panel Admin — form username + kata sandi dari konfigurasi.
 
 Setelah berhasil masuk, halaman ini jadi hub navigasi ke halaman admin
-lain (Input Harga Terbaru, Pengaturan Model) di balik gerbang
-`auth.admin_sudah_masuk()`. Kedua halaman itu juga baru muncul di sidebar
-setelah login — lihat `app.py`.
+lain (Input Harga Terbaru, Pengaturan Model, dst.) di balik gerbang
+`auth.admin_sudah_masuk()`. Halaman-halaman itu juga baru muncul di
+sidebar setelah login — lihat `app.py`.
 """
 
 from __future__ import annotations
 
 import streamlit as st
 
-from auth import admin_sudah_masuk, keluar_dari_admin, login
+from auth import admin_sudah_masuk, login, tombol_logout
 
 
 def _form_login() -> None:
@@ -50,7 +50,7 @@ def _tampilan_sudah_masuk() -> None:
         unsafe_allow_html=True,
     )
 
-    kolom_a, kolom_b = st.columns(2)
+    kolom_a, kolom_b, kolom_c, kolom_d = st.columns(4)
     with kolom_a:
         with st.container(border=True):
             st.markdown("#### ✏️ Input Harga Terbaru")
@@ -61,11 +61,18 @@ def _tampilan_sudah_masuk() -> None:
             st.markdown("#### ⚙️ Pengaturan Model")
             st.caption("Lihat model aktif & ganti dengan model lain yang tersedia.")
             st.page_link("views/admin_model_settings.py", label="Buka halaman", icon="➡️")
+    with kolom_c:
+        with st.container(border=True):
+            st.markdown("#### 🚨 Pengaturan Ambang")
+            st.caption("Atur ambang batas peringatan dini harga tiap komoditas.")
+            st.page_link("views/admin_ambang_settings.py", label="Buka halaman", icon="➡️")
+    with kolom_d:
+        with st.container(border=True):
+            st.markdown("#### 🗂️ Audit Log")
+            st.caption("Lihat riwayat login & logout admin.")
+            st.page_link("views/admin_audit_log.py", label="Buka halaman", icon="➡️")
 
-    st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
-    if st.button("Kunci Panel Admin"):
-        keluar_dari_admin()
-        st.rerun()
+    tombol_logout()
 
 
 if admin_sudah_masuk():

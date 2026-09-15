@@ -1,0 +1,11 @@
+# Tema Streamlit — cuma `primaryColor` yang disetel (warna hijau brand yang
+# sama dengan `--ppj-primary` di assets/styles.css), supaya tombol, opsi
+# segmented_control terpilih, dan aksen bawaan Streamlit lain konsisten
+# dengan identitas visual aplikasi alih-alih warna default Streamlit.
+#
+# `base`/backgroundColor/textColor SENGAJA tidak disetel — halaman publik
+# maupun admin harus tetap terbaca baik pengguna memakai preferensi tema
+# terang maupun gelap di browser/OS-nya (lihat charting.py untuk alasan
+# grafik sendiri sengaja TIDAK ikut aturan ini).
+[theme]
+primaryColor = "#1f8a4c"

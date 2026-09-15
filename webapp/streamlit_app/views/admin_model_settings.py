@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import streamlit as st
 
-from auth import require_admin
+from auth import require_admin, sesi_admin_saat_ini, tombol_logout
 from config import get_model_aktif, set_model_aktif
 from data.mock_models import DEFAULT_MODEL_AKTIF, get_info_model, get_model_tersedia
+from db import catat_aktivitas_admin
 
 require_admin()
 
@@ -55,6 +56,11 @@ with kolom_form:
                 st.info("Model ini sudah aktif.")
             else:
                 set_model_aktif(nama_terpilih)
+                catat_aktivitas_admin(
+                    "model_diubah",
+                    sesi_admin_saat_ini(),
+                    detail=f"{model_aktif_sekarang} -> {nama_terpilih}",
+                )
                 st.success(f"Model aktif diubah ke **{nama_terpilih}**.")
 
         model_aktif_terkini = get_model_aktif() or DEFAULT_MODEL_AKTIF
@@ -72,3 +78,5 @@ with slot_model_aktif:
             st.caption(f"{info_aktif.deskripsi} · dilatih {info_aktif.dilatih_pada}")
         else:
             st.markdown(f"**{model_aktif_final}**")
+
+tombol_logout()

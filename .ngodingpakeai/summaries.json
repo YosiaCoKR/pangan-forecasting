@@ -1,92 +1,152 @@
 {
   ".claude/skills/ngodingpakeai/SKILL.md": {
-    "summary": "Dokumentasi skill NgodingPakeAI yang dipasang otomatis oleh `ngodingpakeai init` untuk agent AI (Claude Code). Menjelaskan cara kerja sinkronisasi codebase: agent menulis ringkasan bahasa alami untuk tiap file secara lokal, CLI hanya mengunggah metadata + ringkasan (bukan kode mentah) ke server NgodingPakeAI untuk pencarian semantik dan dokumentasi proyek. Berisi prasyarat, alur `login`/`connect`/`init`/`sync`, dan aturan privasi (tidak pernah mengunggah source code, secret, atau kredensial)."
+    "summary": "Skill agent untuk alur NgodingPakeAI: login, connect repo ke workspace, siklus task next/start/complete, dan sync metadata + summary. Berisi aturan keras seperti full sync cuma dijalankan sekali seluruh plan selesai."
   },
   ".gitattributes": {
-    "summary": "Konfigurasi Git minimal: `* text=auto` untuk normalisasi line-ending otomatis pada semua file teks lintas platform (Windows/Unix)."
+    "summary": "Konfigurasi Git satu baris: deteksi otomatis file teks dan normalisasi line ending LF untuk semua berkas di repo."
   },
   ".gitignore": {
-    "summary": "Daftar pengecualian Git standar Python/Node (bytecode, virtualenv, cache, node_modules, dsb) ditambah aturan khusus aplikasi Streamlit Prediksi Pangan Jogja: mengabaikan artefak runtime yang dihasilkan aplikasi saat dijalankan — `webapp/streamlit_app/tracking.db` (log SQLite login admin & prediksi), `config.json`/`config.json.tmp` (pengaturan model aktif yang diubah admin), dan `data/harga_historis.pkl` (hasil input harga admin yang dipersist). Juga mengabaikan `.ngodingpakeai/` dan `.claude/` (ditambahkan oleh tooling NgodingPakeAI)."
+    "summary": "Daftar pola file/folder yang diabaikan Git — cache Python (__pycache__, *.pyc), artefak build/distribusi, dan file environment/state runtime seperti .env dan data hasil input admin."
   },
   ".ngodingpakeaiignore": {
-    "summary": "Berkas kosong (hanya komentar contoh) untuk menambah pengecualian path pada sinkronisasi NgodingPakeAI, sintaks mirip `.gitignore`. Belum ada aturan kustom yang diisi."
+    "summary": "Daftar tambahan path yang dikecualikan dari sync NgodingPakeAI (format seperti .gitignore); saat ini kosong/berisi contoh saja karena secrets, node_modules, dan .env sudah otomatis diblokir CLI."
+  },
+  ".vscode/settings.json": {
+    "summary": "Pengaturan workspace VS Code: menonaktifkan Python language server bawaan dan mengaktifkan inline suggestion editor."
   },
   "AGENTS.md": {
-    "summary": "Instruksi skill NgodingPakeAI yang disuntikkan `ngodingpakeai init` ke file aturan agent (AGENTS.md) proyek ini. Mendokumentasikan workspace ID target (97b97812-527b-46e2-97f6-fb87d7b234c3), cara autentikasi via token `ngpk_...`, dan prosedur sync dua tahap (`sync --plan` lalu tulis `.ngodingpakeai/summaries.json` lalu `sync`). Menegaskan CLI adalah satu-satunya gerbang keluar data — source code mentah tidak pernah diunggah."
+    "summary": "Dokumentasi skill NgodingPakeAI untuk agent coding (Claude Code dkk) — menjelaskan cara connect repo ke workspace, alur sinkronisasi indeks kode, dan siklus kerja task plan lewat CLI."
   },
   "README.md": {
-    "summary": "README utama proyek 'Program Skripsi' (PANGANIA) — tapi ISINYA SUDAH USANG: mendeskripsikan arsitektur monorepo lama dengan `webapp/backend` (FastAPI + SQLAlchemy + SQLite) dan `webapp/frontend` (React 18 + TypeScript + Vite), termasuk perintah `npm run backend:dev`/`frontend:dev` dan skrip `pangania.seed`/`pangania.register_models`. Direktori `webapp/backend` dan `webapp/frontend` itu SUDAH DIHAPUS pada commit 'update to streamlit' — aplikasi aktual sekarang murni Streamlit di `webapp/streamlit_app/`. Bagian 'Penelitian' (notebook `code.ipynb`, dataset `DATASET-BERAS.csv`, artefak `trend_models.pkl`/`stl_results.pkl` di `webapp/research/`) masih akurat. README juga mencantumkan kredensial admin contoh untuk arsitektur lama yang sudah tidak relevan — sebaiknya diperbarui menyeluruh agar sesuai kondisi kode saat ini."
+    "summary": "Dokumentasi utama proyek skripsi 'Prediksi Pangan Jogja' — aplikasi Streamlit untuk memantau & memprediksi harga 9 komoditas pangan DIY. Menjelaskan ringkasan fitur (dashboard, detail komoditas, data historis, panel admin) dan struktur folder repository (webapp/research vs webapp/streamlit_app)."
   },
   "webapp/research/code.ipynb": {
-    "summary": "Notebook riset utama (Jupyter) untuk pipeline prediksi harga: eksplorasi data, penanganan missing value via interpolasi time-based, uji stasioneritas ADF, dekomposisi MSTL (trend + seasonal mingguan/tahunan) dengan `LinearRegression` sebagai `trend_models` untuk ekstrapolasi, feature engineering lag/rolling window via `feature-engine`, optimasi hyperparameter LightGBM pakai Genetic Algorithm (`pygad`, 10-fold CV) menghasilkan 27 model (9 komoditas × 3 horizon: H+1/H+7/H+30), model pembanding (naive, LightGBM default, grid search), evaluasi walk-forward (MAE/RMSE/R²/MAPE), dan early warning system bulanan berbasis selisih persentase prediksi H+30 vs harga hari ini. Mengikuti metodologi yang didokumentasikan di WORKFLOW-PROGRAM.md. Working directory harus `webapp/research/` agar path dataset relatif berfungsi."
-  },
-  "webapp/research/code_backup.ipynb": {
-    "summary": "Salinan cadangan dari `code.ipynb` (notebook riset training model GA-LightGBM). Isi dan tujuannya sama dengan notebook utama — kemungkinan snapshot sebelum revisi terakhir, disimpan sebagai jaga-jaga."
+    "summary": "Notebook riset utama pipeline model: EDA & pembersihan DATASET-BERAS.csv (interpolasi waktu untuk mengisi gap akhir pekan/libur), uji stasioneritas ADF, dekomposisi MSTL (trend+musiman mingguan/tahunan) per komoditas, ekstrapolasi trend lewat sktime TrendForecaster, tuning hyperparameter LightGBM dengan Genetic Algorithm (PyGAD) pada residual MSTL, lalu menyimpan artefak trend_model.pkl, seasonal_model.pkl, dan forecaster ForecasterDirect (GA-LightGBM) per komoditas x horizon (1/7/30 hari) ke final_model/ & forecast_ga/."
   },
   "webapp/research/DATASET-BERAS.csv": {
-    "summary": "Dataset harga harian 9 komoditas pangan DIY dari Bank Indonesia (PIHPS), periode 4 Jan 2021 – 3 Agu 2026, 2.038 baris × 10 kolom (kolom `tanggal` + 9 komoditas: Beras Kualitas Bawah I/II, Medium I/II, Super I/II, Bawang Merah Ukuran Sedang, Cabai Rawit Hijau, Cabai Rawit Merah). Sekitar 611 tanggal (~30%) awalnya kosong karena pasar tidak disurvei akhir pekan/hari libur, sudah harus diisi lewat interpolasi time-based (bukan di-drop) sesuai metodologi di WORKFLOW-PROGRAM.md. Ini sumber data dasar untuk seluruh pipeline model di `code.ipynb`, dan menjadi acuan skala harga realistis untuk data tiruan di `webapp/streamlit_app/data/mock_prices.py`."
+    "summary": "Dataset harga harian 9 komoditas pangan (6 varian beras, bawang merah, 2 varian cabai rawit) di DIY dari Bank Indonesia (PIHPS), 4 Jan 2021 s.d. 3 Agu 2026, 2.038 baris. Nilai dalam ribuan Rupiah; sebagian tanggal (akhir pekan/libur pasar) kosong dan diisi lewat interpolasi waktu di pipeline riset, bukan di-drop."
   },
-  "webapp/research/models/stl_results.pkl": {
-    "summary": "Artefak hasil dekomposisi MSTL (trend, seasonal mingguan `seasonal_7`, seasonal tahunan `seasonal_365`, residual) per komoditas, disimpan dari `code.ipynb` via `joblib.dump`. Dipakai untuk mengambil komponen musiman (`seasonal_at`) saat rekonstruksi harga dari residual prediksi LightGBM ke skala rupiah, dan untuk keperluan inspeksi/plot residual di laporan skripsi."
+  "webapp/research/final_model/final_model_prediction_Beras Kualitas Bawah II_h30.joblib": {
+    "summary": "Artefak skforecast ForecasterDirect (GA-LightGBM) hasil training final untuk komoditas Beras Kualitas Bawah II, horizon prediksi 30 hari, meramal residual MSTL tanpa retraining di aplikasi."
+  },
+  "webapp/research/final_model/final_model_prediction_Beras Kualitas Medium I_h30.joblib": {
+    "summary": "Artefak skforecast ForecasterDirect (GA-LightGBM) hasil training final untuk komoditas Beras Kualitas Medium I, horizon prediksi 30 hari, meramal residual MSTL tanpa retraining di aplikasi."
+  },
+  "webapp/research/final_model/final_model_prediction_Beras Kualitas Super II_h30.joblib": {
+    "summary": "Artefak skforecast ForecasterDirect (GA-LightGBM) hasil training final untuk komoditas Beras Kualitas Super II, horizon prediksi 30 hari, meramal residual MSTL tanpa retraining di aplikasi."
+  },
+  "webapp/research/final_model/final_model_prediction_Cabai Rawit Hijau_h30.joblib": {
+    "summary": "Artefak skforecast ForecasterDirect (GA-LightGBM) hasil training final untuk komoditas Cabai Rawit Hijau, horizon prediksi 30 hari, meramal residual MSTL tanpa retraining di aplikasi."
+  },
+  "webapp/research/final_model/final_model_prediction_Cabai Rawit Hijau_h7.joblib": {
+    "summary": "Artefak skforecast ForecasterDirect (GA-LightGBM) hasil training final untuk komoditas Cabai Rawit Hijau, horizon prediksi 7 hari, meramal residual MSTL tanpa retraining di aplikasi."
+  },
+  "webapp/research/final_model/final_model_prediction_Cabai Rawit Merah_h30.joblib": {
+    "summary": "Artefak skforecast ForecasterDirect (GA-LightGBM) hasil training final untuk komoditas Cabai Rawit Merah, horizon prediksi 30 hari, meramal residual MSTL tanpa retraining di aplikasi."
+  },
+  "webapp/research/forecast_ga/forecasters_ga_Beras Kualitas Bawah II_h30.joblib": {
+    "summary": "Artefak forecaster GA-LightGBM (hasil optimasi hyperparameter PyGAD) untuk komoditas Beras Kualitas Bawah II horizon 30 hari — salinan hasil riset di folder forecast_ga, versi final dipakai aplikasi ada di final_model/."
+  },
+  "webapp/research/forecast_ga/forecasters_ga_Beras Kualitas Medium I_h30.joblib": {
+    "summary": "Artefak forecaster GA-LightGBM (hasil optimasi hyperparameter PyGAD) untuk komoditas Beras Kualitas Medium I horizon 30 hari — salinan hasil riset di folder forecast_ga, versi final dipakai aplikasi ada di final_model/."
+  },
+  "webapp/research/forecast_ga/forecasters_ga_Beras Kualitas Super II_h30.joblib": {
+    "summary": "Artefak forecaster GA-LightGBM (hasil optimasi hyperparameter PyGAD) untuk komoditas Beras Kualitas Super II horizon 30 hari — salinan hasil riset di folder forecast_ga, versi final dipakai aplikasi ada di final_model/."
+  },
+  "webapp/research/forecast_ga/forecasters_ga_Cabai Rawit Hijau_h30.joblib": {
+    "summary": "Artefak forecaster GA-LightGBM (hasil optimasi hyperparameter PyGAD) untuk komoditas Cabai Rawit Hijau horizon 30 hari — salinan hasil riset di folder forecast_ga, versi final dipakai aplikasi ada di final_model/."
+  },
+  "webapp/research/forecast_ga/forecasters_ga_Cabai Rawit Hijau_h7.joblib": {
+    "summary": "Artefak forecaster GA-LightGBM (hasil optimasi hyperparameter PyGAD) untuk komoditas Cabai Rawit Hijau horizon 7 hari — salinan hasil riset di folder forecast_ga, versi final dipakai aplikasi ada di final_model/."
+  },
+  "webapp/research/forecast_ga/forecasters_ga_Cabai Rawit Merah_h30.joblib": {
+    "summary": "Artefak forecaster GA-LightGBM (hasil optimasi hyperparameter PyGAD) untuk komoditas Cabai Rawit Merah horizon 30 hari — salinan hasil riset di folder forecast_ga, versi final dipakai aplikasi ada di final_model/."
+  },
+  "webapp/research/models/seasonal_model.pkl": {
+    "summary": "Dict[nama_komoditas] -> hasil statsmodels MSTL(...).fit() (DecomposeResult) per komoditas, punya komponen trend/seasonal_7/seasonal_365/residual dari data training. Dimuat aplikasi lewat forecast.muat_seasonal_model() untuk menyusun fitur residual & merekonstruksi harga prediksi."
+  },
+  "webapp/research/one-step-ahead.ipynb": {
+    "summary": "Notebook kosong (0 byte) — placeholder eksperimen one-step-ahead forecasting yang belum diisi."
+  },
+  "webapp/research/requirements.txt": {
+    "summary": "Daftar dependency Python untuk notebook riset: pandas, numpy, matplotlib, seaborn, plotly, missingno, scikit-learn, statsmodels, feature_engine, skforecast, lightgbm, pygad, joblib."
+  },
+  "webapp/streamlit_app/.streamlit/config.toml": {
+    "summary": "Konfigurasi tema Streamlit — cuma primaryColor hijau yang disetel, sengaja tidak menetapkan base/backgroundColor/textColor supaya aplikasi tetap otomatis mengikuti preferensi tema terang/gelap perangkat pengguna."
   },
   "webapp/streamlit_app/app.py": {
-    "summary": "Entry point aplikasi Streamlit 'Prediksi Pangan Jogja'. Fungsi `main()` mengatur `st.set_page_config` (tema, sidebar collapsed), memuat CSS kustom dari `assets/styles.css` via `load_custom_css()`, lalu mendaftarkan seluruh halaman lewat `st.navigation`: grup 'Menu' publik berisi `views/dashboard.py` (Dashboard Pangan, default) dan `views/historis.py` (Data Historis), plus `views/detail_komoditas.py` dengan `visibility=\"hidden\"` (halaman nyata, dituju via `st.switch_page`, tapi tidak tampil di sidebar karena diakses lewat klik kartu komoditas). Grup 'Admin' berisi `views/admin_login.py` (Panel Admin, selalu tampil) serta `views/admin_input_harga.py` dan `views/admin_model_settings.py` — keduanya kini memakai `visibility` DINAMIS: dicek via `auth.admin_sudah_masuk()` tiap render, jadi baru muncul di sidebar SETELAH admin login dan hilang lagi setelah logout (navbar admin terasa benar-benar terpisah dari publik, bukan sekadar diproteksi diam-diam)."
+    "summary": "Entry point aplikasi Streamlit — mendaftarkan semua halaman lewat st.Page/st.navigation (Dashboard Pangan, Data Historis, Detail Komoditas publik; Panel Admin, Input Harga, Pengaturan Model, Pengaturan Ambang, Audit Log yang cuma tampil di sidebar setelah admin login) dan memuat CSS kustom dari assets/styles.css."
   },
   "webapp/streamlit_app/assets/styles.css": {
-    "summary": "CSS kustom tema 'Prediksi Pangan Jogja' — palet hijau (`--ppj-primary #1f8a4c`) untuk hero gradient, kartu komoditas (`.ppj-card`, dengan margin-bottom agar berjarak dari tombol 'Lihat Detail' di bawahnya), indikator tren naik/turun (`.ppj-trend-up/down/flat`), hero detail komoditas dengan badge tren kontras di atas gradient gelap (`.ppj-hero-trend-up/down/flat`), dan `.ppj-placeholder` untuk state kosong (mis. data historis belum tersedia)."
+    "summary": "Stylesheet kustom aplikasi — token warna & jarak di :root dengan override mode gelap lewat prefers-color-scheme, styling hero/kartu dashboard/badge tren/placeholder data kosong, dan radius panel prediksi bersama (kelas st-key-kartu-prediksi)."
   },
   "webapp/streamlit_app/auth.py": {
-    "summary": "Modul autentikasi admin — username + kata sandi dari environment variable `ADMIN_USERNAME`/`ADMIN_PASSWORD` (dimuat via `python-dotenv` dari `.env` opsional, fallback default dev `admin`/`admin123`), tanpa tabel `users` (bukan akun terdaftar, cuma dua nilai konfigurasi tetap). Fungsi utama: `username_admin()`/`kata_sandi_admin()` baca nilai konfigurasi; `login(username, kata_sandi)` mencocokkan KEDUANYA lalu memanggil `masuk_sebagai_admin()` dan mencatat log ke `db.catat_aktivitas_admin(\"login\", sesi)`; `keluar_dari_admin()` mencatat log logout lalu menghapus status sesi; `admin_sudah_masuk()` cek `st.session_state` (dipakai juga oleh `app.py` untuk navbar dinamis); `require_admin()` dipanggil di awal setiap halaman admin (Input Harga, Pengaturan Model) untuk memblokir akses langsung via URL tanpa login (menampilkan peringatan lalu `st.stop()`)."
+    "summary": "Gerbang akses admin: login()/keluar_dari_admin() berbasis st.session_state dengan kredensial dari env var ADMIN_USERNAME/ADMIN_PASSWORD, require_admin() sebagai guard tiap halaman kerja admin, tombol_logout() dipasang di semua halaman admin, dan sesi_admin_saat_ini() sebagai penanda sesi untuk audit log login/logout & perubahan data lewat db.catat_aktivitas_admin."
   },
   "webapp/streamlit_app/charting.py": {
-    "summary": "Modul bersama untuk menggambar grafik harga (Plotly) yang dipakai halaman Detail Komoditas dan Data Historis — fungsi utama `gambar_grafik_harga(riwayat, unit, ...)`. Sumbu-Y sengaja TIDAK dipaksa mulai dari nol (tanpa `fill=\"tozeroy\"`) supaya fluktuasi harga komoditas mahal (mis. cabai Rp 50-70rb) tetap terbaca, bukan terlihat rata. Menampilkan label nilai langsung di titik akhir historis (disembunyikan saat prediksi aktif untuk menghindari label bertumpuk di titik yang berdekatan) dan titik akhir prediksi (dengan persentase perubahan opsional), garis prediksi putus-putus warna berbeda (`#199e70` historis, `#c98500` prediksi — palet tervalidasi colorblind-safe), gridline horizontal tipis redup tanpa gridline vertikal, dan tooltip gelap (`hoverlabel`) menyatu tema aplikasi."
+    "summary": "gambar_grafik_harga() — grafik Plotly harga historis + lintasan prediksi harian putus-putus (opsional) dengan anotasi nilai, tooltip tanggal/harga, dan cincin merah penyorot titik H+30 saat EWS aktif (sorot_peringatan). Latar chart sengaja fix gelap agar konsisten lepas dari tema terang/gelap browser."
   },
   "webapp/streamlit_app/config.py": {
-    "summary": "Modul konfigurasi aplikasi yang bisa diubah admin saat runtime, disimpan di `config.json` (bukan environment variable) dengan penulisan atomik (tulis ke `.tmp` lalu rename) dan fallback aman kalau file rusak/corrupt. Fungsi: `get_model_aktif()` membaca nama file model `.pkl` aktif, `set_model_aktif(nama_file)` menyimpan pilihan admin dari halaman Pengaturan Model."
+    "summary": "Konfigurasi aplikasi yang bisa diubah admin, disimpan ke config.json (tulis atomik lewat file sementara+rename): get/set_model_aktif untuk pilihan model prediksi, dan get/set/reset_ambang_ews untuk ambang batas peringatan dini (harga tetap & persen kenaikan) per komoditas."
   },
   "webapp/streamlit_app/data/mock_commodities.py": {
-    "summary": "Daftar statis 9 komoditas pangan (dataclass `Komoditas`: slug, nama, unit, kategori, ikon) sesuai `DATASET-BERAS.csv` — dikelompokkan kategori 'beras' (6 varian) dan 'bumbu' (bawang merah, cabai rawit hijau/merah). Fungsi `get_komoditas_list()`, `get_komoditas_by_slug(slug)`, `get_kategori_list()`."
+    "summary": "Konfigurasi tetap 9 komoditas pangan (slug, nama, unit, kategori, ikon) sesuai kolom DATASET-BERAS.csv, dikelompokkan kategori beras & bumbu dapur. Dataclass Komoditas dan getter get_komoditas_list/get_komoditas_by_slug/get_kategori_list dipakai di seluruh halaman."
   },
   "webapp/streamlit_app/data/mock_models.py": {
-    "summary": "Daftar tiruan model prediksi `.pkl` yang tersedia untuk dipilih admin di halaman Pengaturan Model (dataclass `InfoModel`: nama_file, deskripsi, tanggal dilatih, `faktor_volatilitas`). Tiga model contoh (`ga_lightgbm_v1.pkl`, `_v2.pkl` default, `_v3_candidate.pkl`) dengan faktor volatilitas berbeda supaya pilihan admin benar-benar mengubah karakter hasil prediksi mock di `mock_prices.get_mock_prediction`. Fungsi `get_model_tersedia()`, `get_info_model(nama_file)`."
+    "summary": "Daftar tiruan model .pkl yang bisa dipilih admin di halaman Pengaturan Model (nama file, deskripsi, tanggal dilatih, faktor volatilitas) — dataclass InfoModel dan getter get_model_tersedia/get_info_model, masih data statis untuk tahap frontend."
   },
   "webapp/streamlit_app/data/mock_prices.py": {
-    "summary": "Sumber data harga — riwayat dasar dibangkitkan sebagai random walk deterministik (seed dari slug komoditas) karena file `.pkl` riwayat harga sungguhan adalah keluaran pipeline model milik pengguna (di luar cakupan proyek ini). Fungsi kunci: `get_price_history(slug, hari)` baca riwayat; `get_dashboard_cards()`/`get_kartu_harga(slug)` untuk kartu dashboard (harga terbaru, tren, waktu update); `get_mock_prediction(slug, hari_ke_depan)` menghitung prediksi tiruan yang faktor volatilitasnya mengikuti model aktif dari `config.get_model_aktif()` (lihat `mock_models.py`); `tambah_harga_baru(slug, tanggal, harga)` — input admin BENAR-BENAR dipersist ke `harga_historis.pkl` di folder yang sama (bukan cuma cache memori), dimuat balik saat modul di-import lewat `_muat_riwayat_dari_pkl()`."
+    "summary": "Lapisan data harga historis — riwayat dasar tiap komoditas dimuat dari DATASET-BERAS.csv asli (_muat_dataset_riset, pra-proses sama seperti code.ipynb) bukan lagi random walk, dengan fallback random walk untuk komoditas di luar dataset. get_price_history/get_dashboard_cards/get_kartu_harga jadi kontrak baca; tambah_harga_baru menyimpan edit admin ke harga_historis.pkl dan memicu _rerun_pra_proses (warm cache forecast.ramalkan_harga 3 horizon)."
   },
   "webapp/streamlit_app/data/__init__.py": {
-    "summary": "Berkas kosong penanda package Python untuk folder `data/` (modul mock_commodities, mock_models, mock_prices)."
+    "summary": "Berkas kosong penanda package Python untuk folder data/ (mock_commodities, mock_models, mock_prices)."
   },
   "webapp/streamlit_app/db.py": {
-    "summary": "Log aktivitas SQLite ringan (`tracking.db`) — satu-satunya penggunaan database di aplikasi ini, sesuai PRD tidak pernah menyimpan data harga/model/akun. Tabel `admin_login_logs` (waktu, aksi login/logout, sesi — tanpa tabel `users`). Fungsi `catat_aktivitas_admin(aksi, sesi)` dipanggil dari `auth.py` saat login/logout; `ambil_log_admin(batas)` untuk audit."
+    "summary": "Satu-satunya penggunaan database aplikasi — SQLite ringan (tracking.db) untuk log aktivitas admin_login_logs (waktu, aksi, sesi, detail). catat_aktivitas_admin() menulis login/logout dan perubahan data (harga_diperbarui, model_diubah, ambang_diubah); ambil_log_admin() membaca log terbaru untuk halaman Audit Log. Migrasi kolom detail otomatis lewat PRAGMA+ALTER TABLE saat koneksi dibuka."
+  },
+  "webapp/streamlit_app/ews.py": {
+    "summary": "Deteksi Peringatan Dini Harga (EWS) — periksa_peringatan() membandingkan prediksi H+30 (forecast.ramalkan_hasil_horizon, HORIZON_EWS=30) terhadap ambang per komoditas dari config.get_ambang_ews, mengembalikan HasilPeringatan (aktif/alasan persen atau harga_tetap) atau None kalau prediksi gagal dihitung."
+  },
+  "webapp/streamlit_app/forecast.py": {
+    "summary": "Modul pemuat & penjalan model riset MSTL+GA-LightGBM tanpa retraining — muat_trend_model/muat_seasonal_model/muat_forecaster_residual membaca artefak dari webapp/research/ (read-only), susun_residual_mstl menyusun fitur residual dari harga terbaru, ramalkan_harga (di-cache st.cache_data) meramal H+1..H+horizon lalu merekonstruksi ke Rupiah (SKALA_HARGA=1000), dan ramalkan_hasil_horizon membungkusnya jadi HasilPeramalan siap pakai UI."
   },
   "webapp/streamlit_app/formatting.py": {
-    "summary": "Utilitas format tampilan bersama antar halaman: `format_rupiah(nilai)` (pemisah ribuan titik ala Indonesia), `format_waktu_pembaruan(diperbarui_pada)` (waktu relatif 'X jam lalu'), `tren_status(harga_terbaru, harga_kemarin)` mengembalikan status ('naik'/'turun'/'tetap') + label panah — pemetaan ke kelas CSS diserahkan tiap halaman karena kontras beda-beda (kartu putih vs hero gelap)."
+    "summary": "Utilitas format tampilan bersama: format_rupiah (pemisah ribuan titik), format_waktu_pembaruan (relatif 'X jam lalu' atau tanggal absolut kalau >24 jam), dan tren_status (arah naik/turun/tetap + label persen dibanding harga kemarin)."
+  },
+  "webapp/streamlit_app/komponen_prediksi.py": {
+    "summary": "Komponen UI bersama panel 'Prediksi Harga' (horizon picker 1/7/30 hari + tombol + hasil) dipakai identik di Dashboard, Detail Komoditas, dan Data Historis — panel_prediksi() memanggil forecast.ramalkan_hasil_horizon, menangani ModelRisetError dengan placeholder ramah, dan key_prefix berbasis slug polos supaya state prediksi tersinkron lintas halaman untuk komoditas yang sama."
   },
   "webapp/streamlit_app/requirements.txt": {
-    "summary": "Dependensi Python aplikasi Streamlit: `streamlit>=1.36`, `pandas`, `plotly`, `python-dotenv` (untuk memuat `ADMIN_PASSWORD` dari `.env`)."
+    "summary": "Dependency Python aplikasi Streamlit: streamlit>=1.36, pandas, plotly, python-dotenv, dan library model riset (joblib, scikit-learn, statsmodels, sktime, skforecast, lightgbm) untuk memuat & menjalankan forecaster tanpa retraining."
+  },
+  "webapp/streamlit_app/views/admin_ambang_settings.py": {
+    "summary": "Halaman admin Pengaturan Ambang — form ubah ambang EWS (persen kenaikan & harga tetap) per komoditas dengan widget berkunci per-slug, tombol Simpan Ambang & Reset ke Default yang mencatat aktivitas ambang_diubah ke audit log, plus kartu ringkasan ambang aktif saat ini."
+  },
+  "webapp/streamlit_app/views/admin_audit_log.py": {
+    "summary": "Halaman admin Audit Log — menampilkan riwayat login/logout & perubahan data admin dari db.ambil_log_admin dengan filter jenis aksi dan rentang tanggal, tabel kolom Waktu/Aksi/Detail/Sesi, serta placeholder untuk data kosong atau hasil filter kosong."
   },
   "webapp/streamlit_app/views/admin_input_harga.py": {
-    "summary": "Halaman admin 'Input Harga Terbaru' (diproteksi `auth.require_admin()`). Form (`clear_on_submit=True` supaya kolom harga kosong lagi setelah tersimpan, mencegah klik simpan dobel tanpa sadar) berisi pilih komoditas (`data.mock_commodities`), tanggal (maksimal hari ini), dan harga baru (validasi wajib diisi & harus > 0). Submit memanggil `data.mock_prices.tambah_harga_baru()` yang menulis ke `harga_historis.pkl` sungguhan, lalu efeknya langsung terlihat di Dashboard/Detail/Data Historis karena semua baca dari cache riwayat yang sama."
+    "summary": "Halaman admin Input Harga Terbaru — form catat harga satu komoditas untuk tanggal tertentu dengan validasi (wajib diisi, harus >0), memanggil data.mock_prices.tambah_harga_baru untuk menyimpan & memicu rerun pra-proses prediksi, dan mencatat aktivitas harga_diperbarui ke audit log."
   },
   "webapp/streamlit_app/views/admin_login.py": {
-    "summary": "Halaman 'Panel Admin' — form login username + kata sandi via `auth.login(username, kata_sandi)` kalau belum masuk (pesan error digabung 'Username atau kata sandi salah' agar tidak membocorkan field mana yang salah); kalau sudah masuk, menampilkan hub navigasi dengan dua kartu `st.page_link` ke halaman 'Input Harga Terbaru' dan 'Pengaturan Model' (yang baru muncul di sidebar setelah login, lihat `app.py`), plus tombol 'Kunci Panel Admin' yang memanggil `auth.keluar_dari_admin()`."
+    "summary": "Halaman login Panel Admin — form username/kata sandi (auth.login), dan setelah masuk jadi hub navigasi 4 kartu (Input Harga Terbaru, Pengaturan Model, Pengaturan Ambang, Audit Log) plus tombol logout bersama."
   },
   "webapp/streamlit_app/views/admin_model_settings.py": {
-    "summary": "Halaman admin 'Pengaturan Model' (diproteksi `require_admin()`). Menampilkan kartu 'Model Aktif Saat Ini' (diisi di akhir skrip lewat slot `st.container()` supaya selalu menampilkan nilai terbaru walau baru saja diubah pada render yang sama) dan form ganti model dari `data.mock_models.get_model_tersedia()` dengan indikator 'perubahan belum disimpan' yang muncul kalau pilihan dropdown beda dari `config.get_model_aktif()`. Tombol 'Simpan Model Aktif' memanggil `config.set_model_aktif()`."
+    "summary": "Halaman admin Pengaturan Model — pilih model prediksi aktif dari data.mock_models.get_model_tersedia, simpan lewat config.set_model_aktif, tampilkan peringatan perubahan belum disimpan, kartu model aktif saat ini, dan mencatat aktivitas model_diubah ke audit log."
   },
   "webapp/streamlit_app/views/dashboard.py": {
-    "summary": "Halaman publik 'Dashboard Pangan' — grid kartu 9 komoditas dikelompokkan per kategori (beras/bumbu dapur) dari `data.mock_prices.get_dashboard_cards()`, masing-masing menampilkan harga terbaru, indikator tren (`formatting.tren_status`), dan waktu update. Tombol 'Lihat Detail' tiap kartu men-set `st.session_state[\"komoditas_dipilih\"]` lalu `st.switch_page(\"views/detail_komoditas.py\")` — halaman ini SELALU menampilkan grid (tidak ada lagi percabangan kondisional show-detail-inline, sudah dipisah jadi halaman `st.Page` tersendiri agar klik nav 'Dashboard Pangan' saat di halaman detail benar-benar kembali ke grid, bukan nyangkut)."
+    "summary": "Halaman publik Dashboard Pangan — grid kartu harga 9 komoditas dikelompokkan kategori (beras/bumbu dapur) dari data.mock_prices.get_dashboard_cards, tiap kartu punya panel prediksi (komponen_prediksi.panel_prediksi) dan tombol Lihat Detail ke halaman Detail Komoditas; placeholder kalau data kosong."
   },
   "webapp/streamlit_app/views/detail_komoditas.py": {
-    "summary": "Halaman (hidden `st.Page`, dituju dari kartu Dashboard) 'Detail Komoditas' — baca slug dari `st.session_state[\"komoditas_dipilih\"]`. Menampilkan hero info harga (`_gambar_hero`, memakai `data.mock_prices.get_kartu_harga`), grafik harga 90 hari via `charting.gambar_grafik_harga` (dengan overlay garis prediksi kalau ada), dan panel kontrol prediksi: `st.segmented_control` pilih rentang 1/7/30 hari lalu tombol 'Prediksi' memanggil `data.mock_prices.get_mock_prediction`, hasil ditampilkan via `st.metric` (+ delta persen untuk 30 hari) dan caption nama model yang dipakai. Tombol 'Kembali ke Dashboard' memakai `st.switch_page(\"views/dashboard.py\")`."
+    "summary": "Halaman publik Detail Komoditas — hero info harga, grafik historis + garis prediksi (charting.gambar_grafik_harga), panel prediksi interaktif, serta banner & pop-up st.dialog Peringatan Dini Harga (ews.periksa_peringatan) sekali per sesi per komoditas, dengan sorotan titik H+30 di grafik saat peringatan aktif."
   },
   "webapp/streamlit_app/views/historis.py": {
-    "summary": "Halaman publik 'Data Historis' — pilih salah satu dari 9 komoditas dan rentang waktu 30/60/90 hari (`st.segmented_control`, default 30 Hari), lalu menggambar tren harga via `charting.gambar_grafik_harga`. Menampilkan placeholder `.ppj-placeholder` kalau `data.mock_prices.get_price_history` mengembalikan data kosong."
+    "summary": "Halaman publik Data Historis — pilih komoditas & rentang waktu (30/60/90 hari), tampilkan grafik tren harga (charting.gambar_grafik_harga) berdampingan dengan panel prediksi bersama (komponen_prediksi.panel_prediksi), dengan placeholder saat riwayat kosong."
   },
   "webapp/streamlit_app/views/__init__.py": {
-    "summary": "Berkas kosong penanda package Python untuk folder `views/` (seluruh halaman Streamlit publik & admin)."
+    "summary": "Berkas kosong penanda package Python untuk folder views/ (seluruh halaman Streamlit publik & admin)."
   },
   "WORKFLOW-PROGRAM.md": {
-    "summary": "Dokumen metodologi riset skripsi 'Optimasi Hyperparameter LightGBM Regressor Menggunakan Genetic Algorithm untuk Prediksi Harga Komoditas Beras, Bawang Merah, dan Cabai Rawit di Provinsi DIY'. Mendetailkan 13 langkah pipeline: load data (2.038 baris, 4 Jan 2021–3 Agu 2026), interpolasi missing value time-based, uji stasioneritas ADF, dekomposisi MSTL (periods 7 & 365) dengan `trend_models` (LinearRegression) sebagai satu-satunya model tren (Holt/ETS dibuang per keputusan 30 Agu 2026), feature engineering lag/rolling via `feature-engine`, target Direct Multi-Horizon (H+1/H+7/H+30), optimasi GA (`pygad`, 11 hyperparameter, fitness 10-fold CV), training 27 model GA-LightGBM final, 3 model pembanding (naive/default/grid search), evaluasi walk-forward, early warning system bulanan (stateless, selisih persentase prediksi H+30 vs harga hari ini, tanpa database), dan rolling one-step forecast untuk deployment. Juga mencatat keputusan lapisan aplikasi: EWS tidak butuh database, Streamlit untuk admin butuh penyimpanan untuk input harga & login (bukan dari Streamlit sendiri), dan catatan bahwa backend FastAPI+SQLAlchemy lama sudah digantikan pendekatan Streamlit-only untuk skripsi ini."
+    "summary": "Dokumentasi alur pengerjaan skripsi 'Optimasi Hyperparameter LightGBM Regressor Menggunakan Genetic Algorithm untuk Prediksi Harga Komoditas' — menjelaskan 2 output riset (prediksi presisi GA-LightGBM 1/7/30 hari & Early Warning System bulanan), detail dataset PIHPS 2021-2026, serta catatan koreksi angka preprocessing (2.038 baris, 611 tanggal diinterpolasi)."
   }
 }

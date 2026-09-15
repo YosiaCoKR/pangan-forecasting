@@ -9,7 +9,6 @@ terbaca — komoditas Rp 50–70rb tidak jadi terlihat rata seperti garis lurus.
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Optional
 
 import pandas as pd
@@ -20,6 +19,7 @@ from formatting import format_rupiah
 
 _WARNA_HISTORIS = "#199e70"
 _WARNA_PREDIKSI = "#c98500"
+_WARNA_PERINGATAN = "#e14b4b"
 _WARNA_GRID = "rgba(255, 255, 255, 0.08)"
 _WARNA_SUMBU = "rgba(255, 255, 255, 0.18)"
 _WARNA_TEKS_MUTED = "rgba(230, 230, 224, 0.65)"
@@ -39,14 +39,26 @@ def gambar_grafik_harga(
     unit: str,
     *,
     height: int = 380,
-    prediksi_tanggal: Optional[date] = None,
-    prediksi_harga_sekarang: Optional[float] = None,
-    prediksi_harga: Optional[float] = None,
+    trajektori_prediksi: Optional[pd.Series] = None,
     prediksi_label: Optional[str] = None,
     prediksi_persen: Optional[float] = None,
+    sorot_peringatan: bool = False,
 ) -> None:
-    """Gambar grafik garis harga historis, dengan garis prediksi opsional."""
-    ada_prediksi = prediksi_tanggal is not None and prediksi_harga is not None
+    """Gambar grafik garis harga historis, dengan lintasan prediksi harian opsional.
+
+    `trajektori_prediksi` (kalau ada) adalah `pd.Series` berindeks tanggal
+    (H+1..H+n) — garis putus-putus disambung dari titik historis terakhir
+    lewat SELURUH titik lintasan, bukan cuma garis lurus ke satu titik akhir
+    (`forecast.ramalkan_harga` mengembalikan lintasan harian penuh, bukan
+    cuma nilai di H+n). Label nilai tetap hanya di titik akhir lintasan —
+    label per-hari untuk 30 titik akan bertumpuk dan tak terbaca.
+
+    `sorot_peringatan=True` menambah cincin merah di titik AKHIR lintasan —
+    dipakai pemanggil saat titik itu (H+30) memicu peringatan dini (EWS),
+    supaya titik yang jadi alasan peringatan langsung terlihat di grafik,
+    bukan cuma disebut di teks banner/pop-up.
+    """
+    ada_prediksi = trajektori_prediksi is not None and not trajektori_prediksi.empty
 
     tanggal_akhir = riwayat["tanggal"].iloc[-1]
     harga_akhir = float(riwayat["harga"].iloc[-1])
@@ -91,28 +103,32 @@ def gambar_grafik_harga(
         )
 
     if ada_prediksi:
+        x_prediksi = [tanggal_akhir, *trajektori_prediksi.index]
+        y_prediksi = [harga_akhir, *trajektori_prediksi.to_numpy()]
         fig.add_trace(
             go.Scatter(
-                x=[tanggal_akhir, prediksi_tanggal],
-                y=[prediksi_harga_sekarang, prediksi_harga],
+                x=x_prediksi,
+                y=y_prediksi,
                 mode="lines+markers",
                 line=dict(color=_WARNA_PREDIKSI, width=2, dash="dash"),
                 marker=dict(
-                    size=8,
+                    size=5,
                     symbol="diamond",
                     color=_WARNA_PREDIKSI,
-                    line=dict(width=2, color=_CINCIN_PERMUKAAN),
+                    line=dict(width=1, color=_CINCIN_PERMUKAAN),
                 ),
                 name=prediksi_label or "Prediksi",
                 hovertemplate="%{x|%d %b %Y}<br>Prediksi: Rp %{y:,.0f}<extra></extra>",
             )
         )
-        label_prediksi = f"Rp {format_rupiah(prediksi_harga)}"
+        prediksi_tanggal_akhir = trajektori_prediksi.index[-1]
+        prediksi_harga_akhir = float(trajektori_prediksi.iloc[-1])
+        label_prediksi = f"Rp {format_rupiah(prediksi_harga_akhir)}"
         if prediksi_persen is not None:
             label_prediksi += f"  ({prediksi_persen:+.1f}%)"
         fig.add_annotation(
-            x=prediksi_tanggal,
-            y=prediksi_harga,
+            x=prediksi_tanggal_akhir,
+            y=prediksi_harga_akhir,
             text=label_prediksi,
             showarrow=False,
             xanchor="left",
@@ -121,6 +137,18 @@ def gambar_grafik_harga(
             yshift=-6,
             font=dict(color=_WARNA_TEKS_PRIMER, size=12),
         )
+
+        if sorot_peringatan:
+            fig.add_trace(
+                go.Scatter(
+                    x=[prediksi_tanggal_akhir],
+                    y=[prediksi_harga_akhir],
+                    mode="markers",
+                    marker=dict(size=18, symbol="circle-open", color=_WARNA_PERINGATAN, line=dict(width=3)),
+                    name="⚠️ Memicu peringatan",
+                    hoverinfo="skip",
+                )
+            )
 
     fig.update_layout(
         margin=dict(l=90, r=110, t=10, b=40),
@@ -131,7 +159,12 @@ def gambar_grafik_harga(
         paper_bgcolor=_WARNA_LATAR,
         plot_bgcolor=_WARNA_LATAR,
         hovermode="x unified",
-        showlegend=ada_prediksi,
+        # Legend selalu tampil — bukan cuma saat prediksi aktif — supaya garis
+        # "Harga historis" juga eksplisit terlabel di halaman Data Historis
+        # (yang tak pernah punya trace prediksi), bukan cuma bisa ditebak dari
+        # judul sumbu-Y. Trace ambang batas (Fase 3) akan otomatis ikut masuk
+        # legend ini begitu ditambahkan, tanpa perlu ubahan lagi di sini.
+        showlegend=True,
         legend=dict(
             orientation="h",
             yanchor="bottom",
