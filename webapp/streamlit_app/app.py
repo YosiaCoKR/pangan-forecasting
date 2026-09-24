@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import streamlit as st
-
 from auth import admin_sudah_masuk
 
 APP_DIR = Path(__file__).parent
@@ -18,7 +17,10 @@ APP_DIR = Path(__file__).parent
 def load_custom_css() -> None:
     css_path = APP_DIR / "assets" / "styles.css"
     if css_path.exists():
-        st.markdown(f"<style>{css_path.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
+        st.markdown(
+            f"<style>{css_path.read_text(encoding='utf-8')}</style>",
+            unsafe_allow_html=True,
+        )
 
 
 def main() -> None:
@@ -40,6 +42,12 @@ def main() -> None:
         "views/historis.py",
         title="Data Historis",
         icon="📈",
+    )
+    perbandingan_prediksi_page = st.Page(
+        "views/perbandingan_prediksi.py",
+        title="Aktual vs Prediksi",
+        icon="📊",
+        url_path="aktual-vs-prediksi",
     )
     detail_komoditas_page = st.Page(
         "views/detail_komoditas.py",
@@ -86,7 +94,12 @@ def main() -> None:
 
     navigation = st.navigation(
         {
-            "Menu": [dashboard_page, historis_page, detail_komoditas_page],
+            "Menu": [
+                dashboard_page,
+                historis_page,
+                perbandingan_prediksi_page,
+                detail_komoditas_page,
+            ],
             "Admin": [
                 admin_login_page,
                 admin_input_harga_page,
