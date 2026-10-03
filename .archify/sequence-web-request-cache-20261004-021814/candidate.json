@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Web Request with Redis Cache-Aside",
+    "output": ".archify/sequence-web-request-cache-20261004-021814/web-request-cache.html",
+    "viewBox": [960, 520],
+    "column_fit": "spread",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    { "id": "browser", "type": "frontend", "label": "Browser", "sublabel": "client" },
+    { "id": "api", "type": "backend", "label": "API", "sublabel": "request handler" },
+    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "cache" },
+    { "id": "pg", "type": "database", "label": "PostgreSQL", "sublabel": "source of truth" }
+  ],
+  "segments": [
+    { "from": 150, "to": 230, "label": "Cache lookup" },
+    { "from": 240, "to": 350, "label": "On miss" },
+    { "from": 360, "to": 410, "label": "Response" }
+  ],
+  "messages": [
+    { "id": "req", "from": "browser", "to": "api", "y": 165, "label": "HTTP request", "variant": "emphasis" },
+    { "id": "get", "from": "api", "to": "redis", "y": 192, "label": "GET key", "variant": "default" },
+    { "id": "miss", "from": "redis", "to": "api", "y": 220, "label": "miss (nil)", "variant": "return" },
+    { "id": "query", "from": "api", "to": "pg", "y": 258, "label": "SELECT query", "variant": "emphasis" },
+    { "id": "rows", "from": "pg", "to": "api", "y": 288, "label": "rows", "variant": "return" },
+    { "id": "set", "from": "api", "to": "redis", "y": 325, "label": "SET key + TTL", "variant": "dashed" },
+    { "id": "resp", "from": "api", "to": "browser", "y": 380, "label": "200 response", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "api", "from": 165, "to": 386, "type": "backend" },
+    { "participant": "redis", "from": 187, "to": 226, "type": "database" },
+    { "participant": "pg", "from": 253, "to": 294, "type": "database" },
+    { "participant": "redis", "from": 320, "to": 336, "type": "database" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Cache Hit", "items": ["Redis returns the value", "API responds without touching PostgreSQL"] },
+    { "dot": "orange", "title": "Cache Miss", "items": ["API reads from PostgreSQL", "Result is written back to Redis with a TTL", "Next request for the same key is a hit"] }
+  ]
+}

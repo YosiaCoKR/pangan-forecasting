@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "2aefea16-ead6-4445-a5d9-c8a4aacd472e",
+  "status": "current",
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/home/yosiacokr/Documents/Project/pangan-forecasting/.archify/sequence-web-request-cache-20261004-021814/candidate.json",
+  "output": "/home/yosiacokr/Documents/Project/pangan-forecasting/.archify/sequence-web-request-cache-20261004-021814/web-request-cache.html",
+  "specification": {
+    "sha256": "b10bec7845e9425f2ca88c1fa9e79086549e5ec2e73c79dc0c9cb6ba58e8602b",
+    "bytes": 2268
+  },
+  "artifact": {
+    "sha256": "20409027f7aa6e84050f28e24f38d4c63a134fffef10a9eb822de94b3f9dbe86",
+    "bytes": 752798
+  }
+}

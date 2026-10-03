@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "skipped",
+  "type": "sequence",
+  "quality": "showcase",
+  "specification": {
+    "path": "/home/yosiacokr/Documents/Project/pangan-forecasting/.archify/sequence-web-request-cache-20261004-021814/candidate.json",
+    "sha256": "b10bec7845e9425f2ca88c1fa9e79086549e5ec2e73c79dc0c9cb6ba58e8602b",
+    "bytes": 2268
+  },
+  "artifact": {
+    "path": "/home/yosiacokr/Documents/Project/pangan-forecasting/.archify/sequence-web-request-cache-20261004-021814/web-request-cache.html",
+    "sha256": "20409027f7aa6e84050f28e24f38d4c63a134fffef10a9eb822de94b3f9dbe86",
+    "bytes": 752798
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "skipped"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/chrome-unavailable",
+      "severity": "warning",
+      "message": "Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path.",
+      "subject": {
+        "artifact": "/home/yosiacokr/Documents/Project/pangan-forecasting/.archify/sequence-web-request-cache-20261004-021814/web-request-cache.html"
+      },
+      "evidence": {
+        "executable": null
+      },
+      "supportedFixes": [
+        "set ARCHIFY_CHROME to a Chrome or Chromium executable and rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/home/yosiacokr/Documents/Project/pangan-forecasting/.archify/sequence-web-request-cache-20261004-021814/web-request-cache.finalize.json",
+    "summaryReceipt": "/home/yosiacokr/Documents/Project/pangan-forecasting/.archify/sequence-web-request-cache-20261004-021814/web-request-cache.finalize-summary.json",
+    "browserCheckReceipt": "/home/yosiacokr/Documents/Project/pangan-forecasting/.archify/sequence-web-request-cache-20261004-021814/web-request-cache.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.0.1",
+    "availableVersion": "3.0.1",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-03T19:18:14.824Z",
+    "source": "network",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1049
+}
