@@ -28,7 +28,7 @@ require_admin()
 st.markdown(
     """
     <div class="ppj-hero">
-        <h1>🚨 Pengaturan Ambang</h1>
+        <h1>Pengaturan Ambang</h1>
         <p>Atur ambang batas peringatan dini harga (H+30) tiap komoditas.</p>
     </div>
     """,
@@ -129,7 +129,7 @@ with kolom_form:
 
 ambang_final = get_ambang_ews(komoditas_terpilih.slug)
 with slot_ambang_aktif:
-    st.markdown(f"#### Ambang Saat Ini — {komoditas_terpilih.nama}")
+    st.markdown(f"#### Ambang Saat Ini: {komoditas_terpilih.nama}")
     with st.container(border=True):
         if ambang_final["persen_kenaikan"] is None and ambang_final["harga_tetap"] is None:
             st.caption("Belum ada ambang aktif untuk komoditas ini.")

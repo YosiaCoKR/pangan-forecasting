@@ -21,46 +21,73 @@ def _tren_harian(kartu: KartuHarga) -> tuple[str, str]:
 def _gambar_kartu(kartu: KartuHarga) -> None:
     harga_format = format_rupiah(kartu.harga_terbaru)
     kelas_tren, label_tren = _tren_harian(kartu)
+    slug = kartu.komoditas.slug
+
+    # Satu kartu per komoditas (info harga, prediksi, tautan detail) — dulu
+    # tiga kotak bertumpuk terpisah, yang di grid 3 kolom terbaca seperti
+    # 27 elemen lepas, bukan 9 komoditas.
+    with st.container(border=True, key=f"kartu-komoditas-{slug}"):
+        st.markdown(
+            f"""
+            <div class="ppj-card">
+                <div class="ppj-card-head">
+                    <span class="ppj-card-icon">{kartu.komoditas.ikon}</span>
+                    <h4>{kartu.komoditas.nama}</h4>
+                </div>
+                <p class="ppj-price">Rp {harga_format} <span class="ppj-unit">/ {kartu.komoditas.unit}</span></p>
+                <div class="ppj-card-meta">
+                    <span class="{kelas_tren}">{label_tren} dari kemarin</span>
+                    <p class="ppj-updated">{format_waktu_pembaruan(kartu.diperbarui_pada)}</p>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Komponen prediksi bersama (sama dengan Detail Komoditas) — dipasang
+        # langsung di kartu supaya horizon 1/7/30 hari bisa diramal tanpa perlu
+        # pindah halaman dulu.
+        riwayat = get_price_history(slug, hari=90)
+        panel_prediksi(slug, riwayat, kartu.komoditas.nama)
+
+        if st.button(
+            "Lihat grafik & detail",
+            key=f"detail-{slug}",
+            type="tertiary",
+            icon=":material/arrow_forward:",
+            icon_position="right",
+        ):
+            st.session_state["komoditas_dipilih"] = slug
+            st.switch_page("views/detail_komoditas.py")
+
+
+def _gambar_hero(kartu_list: list[KartuHarga]) -> None:
+    jumlah = {"naik": 0, "turun": 0, "tetap": 0}
+    for kartu in kartu_list:
+        status, _ = tren_status(kartu.harga_terbaru, kartu.harga_kemarin)
+        jumlah[status] += 1
 
     st.markdown(
         f"""
-        <div class="ppj-card">
-            <div class="ppj-card-head">
-                <span class="ppj-card-icon">{kartu.komoditas.ikon}</span>
-                <h4>{kartu.komoditas.nama}</h4>
+        <div class="ppj-hero ppj-hero-split">
+            <div>
+                <h1>Prediksi Pangan Jogja</h1>
+                <p>Harga {len(kartu_list)} komoditas pangan di Yogyakarta hari ini, lengkap dengan prediksinya.</p>
             </div>
-            <p class="ppj-price">Rp {harga_format} <span class="ppj-unit">/ {kartu.komoditas.unit}</span></p>
-            <p class="{kelas_tren}">{label_tren} dari kemarin</p>
-            <p class="ppj-updated">🕒 {format_waktu_pembaruan(kartu.diperbarui_pada)}</p>
+            <div class="ppj-hero-stats">
+                <div><strong>{jumlah["naik"]}</strong><span>naik</span></div>
+                <div><strong>{jumlah["turun"]}</strong><span>turun</span></div>
+                <div><strong>{jumlah["tetap"]}</strong><span>tetap</span></div>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-
-    # Komponen prediksi bersama (sama dengan Detail Komoditas) — dipasang
-    # langsung di kartu supaya horizon 1/7/30 hari bisa diramal tanpa perlu
-    # pindah halaman dulu.
-    riwayat = get_price_history(kartu.komoditas.slug, hari=90)
-    with st.container(border=True, key=f"kartu-prediksi-{kartu.komoditas.slug}"):
-        panel_prediksi(kartu.komoditas.slug, riwayat, kartu.komoditas.nama)
-
-    if st.button("Lihat Detail", key=f"detail-{kartu.komoditas.slug}", width="stretch"):
-        st.session_state["komoditas_dipilih"] = kartu.komoditas.slug
-        st.switch_page("views/detail_komoditas.py")
 
 
 def tampilkan_grid_dashboard() -> None:
-    st.markdown(
-        """
-        <div class="ppj-hero">
-            <h1>🌾 Prediksi Pangan Jogja</h1>
-            <p>Pantau harga 9 komoditas pangan di Yogyakarta &amp; lihat prediksinya.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     kartu_list = get_dashboard_cards()
+    _gambar_hero(kartu_list)
     kolom_per_baris = 3
 
     if not kartu_list:
@@ -80,11 +107,10 @@ def tampilkan_grid_dashboard() -> None:
 
         st.markdown(f"#### {label_kategori}")
         for awal in range(0, len(kelompok), kolom_per_baris):
-            kolom = st.columns(kolom_per_baris)
+            kolom = st.columns(kolom_per_baris, gap="medium")
             for kolom_slot, kartu in zip(kolom, kelompok[awal : awal + kolom_per_baris]):
                 with kolom_slot:
-                    with st.container(border=False):
-                        _gambar_kartu(kartu)
+                    _gambar_kartu(kartu)
         st.markdown('<div class="ppj-spacer-md"></div>', unsafe_allow_html=True)
 
 

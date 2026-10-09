@@ -1,20 +1,10 @@
-"""Komponen bersama panel "Prediksi Harga" — horizon-picker + hasil.
-
-Diekstrak dari `views/detail_komoditas.py` supaya halaman lain yang butuh
-kontrol prediksi interaktif (horizon 1/7/30 hari, tombol "Prediksi", metrik
-hasil) tinggal panggil `panel_prediksi()` tanpa duplikasi kode. State
-(rentang aktif) di-scope lewat `key_prefix` (biasanya slug komoditas) supaya
-beberapa panel dalam sesi yang sama tidak bentrok session_state-nya.
-"""
-
 from __future__ import annotations
 
 import logging
 
+import forecast
 import pandas as pd
 import streamlit as st
-
-import forecast
 from formatting import format_rupiah
 
 RENTANG_PREDIKSI = {"1 Hari": 1, "7 Hari": 7, "30 Hari": 30}
@@ -22,7 +12,9 @@ RENTANG_PREDIKSI = {"1 Hari": 1, "7 Hari": 7, "30 Hari": 30}
 _log = logging.getLogger(__name__)
 
 
-def _ramalkan(riwayat: pd.DataFrame, nama_komoditas: str, hari_ke_depan: int) -> forecast.HasilPeramalan | None:
+def _ramalkan(
+    riwayat: pd.DataFrame, nama_komoditas: str, hari_ke_depan: int
+) -> forecast.HasilPeramalan | None:
     try:
         return forecast.ramalkan_hasil_horizon(riwayat, nama_komoditas, hari_ke_depan)
     except forecast.ModelRisetError:
@@ -41,12 +33,6 @@ def _ramalkan(riwayat: pd.DataFrame, nama_komoditas: str, hari_ke_depan: int) ->
 def panel_prediksi(
     key_prefix: str, riwayat: pd.DataFrame, nama_komoditas: str
 ) -> tuple[int | None, forecast.HasilPeramalan | None]:
-    """Render horizon-picker + tombol Prediksi + hasil (metrik & caption).
-
-    Mengembalikan `(rentang_terpilih, hasil)` supaya pemanggil bisa memakai
-    hasil yang sama untuk elemen lain (mis. lintasan prediksi di grafik)
-    tanpa menghitung ulang lewat `forecast.ramalkan_hasil_horizon`.
-    """
     label_rentang = st.segmented_control(
         "Rentang prediksi",
         options=list(RENTANG_PREDIKSI.keys()),
@@ -60,15 +46,23 @@ def panel_prediksi(
         width="stretch",
         disabled=label_rentang is None,
     ):
-        st.session_state[f"prediksi-aktif-{key_prefix}"] = RENTANG_PREDIKSI[label_rentang]
+        st.session_state[f"prediksi-aktif-{key_prefix}"] = RENTANG_PREDIKSI[
+            label_rentang
+        ]
         st.rerun()
 
     rentang_terpilih = st.session_state.get(f"prediksi-aktif-{key_prefix}")
-    hasil = _ramalkan(riwayat, nama_komoditas, rentang_terpilih) if rentang_terpilih else None
+    hasil = (
+        _ramalkan(riwayat, nama_komoditas, rentang_terpilih)
+        if rentang_terpilih
+        else None
+    )
     gagal_diramal = rentang_terpilih is not None and hasil is None
 
     if hasil:
-        st.metric(label="Harga saat ini", value=f"Rp {format_rupiah(hasil.harga_sekarang)}")
+        st.metric(
+            label="Harga saat ini", value=f"Rp {format_rupiah(hasil.harga_sekarang)}"
+        )
         st.metric(
             label=f"Prediksi {rentang_terpilih} hari lagi",
             value=f"Rp {format_rupiah(hasil.harga_prediksi)}",
@@ -82,6 +76,6 @@ def panel_prediksi(
             unsafe_allow_html=True,
         )
     else:
-        st.caption("Pilih rentang lalu klik **Prediksi** untuk melihat hasilnya.")
+        st.caption("Pilih rentang, lalu klik **Prediksi**.")
 
     return rentang_terpilih, hasil

@@ -1,11 +1,33 @@
-# Tema Streamlit — cuma `primaryColor` yang disetel (warna hijau brand yang
-# sama dengan `--ppj-primary` di assets/styles.css), supaya tombol, opsi
-# segmented_control terpilih, dan aksen bawaan Streamlit lain konsisten
-# dengan identitas visual aplikasi alih-alih warna default Streamlit.
+# Tema Streamlit — tema terang DAN gelap didefinisikan terpisah
+# ([theme.light] / [theme.dark], Streamlit ≥1.51), jadi aplikasi otomatis
+# mengikuti preferensi OS/browser pengguna dengan palet kita sendiri.
 #
-# `base`/backgroundColor/textColor SENGAJA tidak disetel — halaman publik
-# maupun admin harus tetap terbaca baik pengguna memakai preferensi tema
-# terang maupun gelap di browser/OS-nya (lihat charting.py untuk alasan
-# grafik sendiri sengaja TIDAK ikut aturan ini).
+# Sebelumnya cuma `primaryColor` yang disetel — itu membuat Streamlit
+# menganggapnya "custom theme" berbasis terang yang TIDAK ikut mode gelap
+# sistem, sementara `assets/styles.css` ikut `prefers-color-scheme`. Hasilnya
+# kartu kustom gelap di atas halaman putih. Warna di sini harus selaras dengan
+# token `--ppj-*` di styles.css (lihat blok `@media (prefers-color-scheme)`).
 [theme]
+# Geist — angka harga tegas & rata (tabular), spasi antarkata lega.
+# Fallback ke sans-serif bawaan kalau Google Fonts tak terjangkau.
+font = "Geist:https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap, sans-serif"
+baseRadius = "12px"
+buttonRadius = "10px"
+
+[theme.light]
 primaryColor = "#1f8a4c"
+backgroundColor = "#f6f8f6"
+secondaryBackgroundColor = "#ebf1ec"
+textColor = "#17241d"
+borderColor = "#dce5df"
+
+[theme.dark]
+primaryColor = "#3dbb72"
+backgroundColor = "#0e1411"
+secondaryBackgroundColor = "#18211c"
+textColor = "#e4ece7"
+borderColor = "#27342d"
+
+[client]
+# Sembunyikan menu developer (Deploy, dsb.) dari pengunjung publik.
+toolbarMode = "minimal"

@@ -17,7 +17,7 @@ def _form_login() -> None:
     st.markdown(
         """
         <div class="ppj-hero">
-            <h1>🔒 Panel Admin</h1>
+            <h1>Panel Admin</h1>
             <p>Masukkan username &amp; kata sandi admin untuk mengelola harga &amp; model prediksi.</p>
         </div>
         """,
@@ -43,7 +43,7 @@ def _tampilan_sudah_masuk() -> None:
     st.markdown(
         """
         <div class="ppj-hero">
-            <h1>🔒 Panel Admin</h1>
+            <h1>Panel Admin</h1>
             <p>Anda sedang masuk sebagai admin. Pilih menu di bawah untuk melanjutkan.</p>
         </div>
         """,

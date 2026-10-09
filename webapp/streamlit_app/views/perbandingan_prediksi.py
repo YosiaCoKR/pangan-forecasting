@@ -97,7 +97,7 @@ def _buat_grafik(slug: str, nama: str, unit: str) -> go.Figure | None:
 st.markdown(
     """
     <div class="ppj-hero">
-        <h1>📊 Aktual vs Prediksi</h1>
+        <h1>Aktual vs Prediksi</h1>
         <p>27 lintasan prediksi dari 9 komoditas dan 3 horizon model.</p>
     </div>
     """,
@@ -106,7 +106,7 @@ st.markdown(
 
 st.caption(
     "Garis hijau menunjukkan harga aktual 90 hari terakhir. "
-    "Garis putus-putus menunjukkan prediksi H+1, H+7, dan H+30 dari model GA-LightGBM + MSTL."
+    "Garis putus-putus menunjukkan prediksi H+1, H+7, dan H+30 dari model GA-LightGBM."
 )
 
 komoditas_list = get_komoditas_list()

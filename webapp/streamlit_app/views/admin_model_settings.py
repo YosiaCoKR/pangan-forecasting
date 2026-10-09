@@ -20,7 +20,7 @@ require_admin()
 st.markdown(
     """
     <div class="ppj-hero">
-        <h1>⚙️ Pengaturan Model</h1>
+        <h1>Pengaturan Model</h1>
         <p>Lihat &amp; ganti model prediksi yang aktif dipakai aplikasi (data tiruan).</p>
     </div>
     """,

@@ -1,7 +1,7 @@
 """Tampilan detail komoditas: hero info harga, grafik historis + garis prediksi.
 
 Prediksi memakai model riset asli lewat `forecast.ramalkan_hasil_horizon`
-(MSTL + GA-LightGBM, tanpa pelatihan ulang) — bukan lagi
+(GA-LightGBM log + differencing, tanpa pelatihan ulang) — bukan lagi
 `data.mock_prices.get_mock_prediction`. Panel kontrol prediksi (horizon
 picker, tombol, hasil) ada di `komponen_prediksi.panel_prediksi` — komponen
 bersama supaya halaman lain yang butuh kontrol serupa tak perlu duplikasi.
@@ -88,7 +88,7 @@ def _gambar_hero(slug: str) -> None:
                 <span class="ppj-hero-price-value">Rp {format_rupiah(kartu.harga_terbaru)}</span>
                 <span class="ppj-hero-unit">/ {komoditas.unit}</span>
                 <span class="{kelas_tren}">{label_tren}</span>
-                <span class="ppj-hero-updated">🕒 {format_waktu_pembaruan(kartu.diperbarui_pada)}</span>
+                <span class="ppj-hero-updated">{format_waktu_pembaruan(kartu.diperbarui_pada)}</span>
             </div>
         </div>
         """,
@@ -124,7 +124,7 @@ def _gambar_peringatan(slug: str, riwayat: pd.DataFrame, nama_komoditas: str) ->
         return False
 
     st.warning(
-        f"⚠️ **Peringatan Dini** — harga {nama_komoditas} diprediksi "
+        f"**Peringatan Dini:** harga {nama_komoditas} diprediksi "
         f"{_detail_peringatan(peringatan)} dalam 30 hari ke depan."
     )
 
@@ -151,7 +151,7 @@ def tampilkan_detail(slug: str) -> None:
     riwayat = get_price_history(slug, hari=90)
     peringatan_aktif = _gambar_peringatan(slug, riwayat, komoditas.nama)
 
-    kolom_chart, kolom_prediksi = st.columns([3, 1], gap="medium")
+    kolom_chart, kolom_prediksi = st.columns([7, 3], gap="medium")
 
     with kolom_prediksi:
         st.markdown("#### Prediksi Harga")

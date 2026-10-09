@@ -181,7 +181,7 @@ def tambah_harga_baru(slug: str, tanggal, harga: float) -> None:
 
 
 def _rerun_pra_proses(slug: str) -> None:
-    """Jalankan ulang pra-proses MSTL & isi ulang cache prediksi (BUKAN
+    """Isi ulang cache prediksi untuk ke-3 horizon (BUKAN
     pelatihan ulang) begitu admin menyimpan harga baru.
 
     Dua manfaat sekaligus:
@@ -201,13 +201,7 @@ def _rerun_pra_proses(slug: str) -> None:
         return
 
     try:
-        trend_model = forecast.muat_trend_model()
-        seasonal_model = forecast.muat_seasonal_model()
-        if komoditas.nama not in trend_model or komoditas.nama not in seasonal_model:
-            return
         riwayat = get_price_history(slug, hari=RENTANG_HARI_MAKS)
-        forecast.susun_residual_mstl(riwayat, trend_model[komoditas.nama], seasonal_model[komoditas.nama])
-
         for horizon in forecast.HORIZON_TERSEDIA:
             forecast.ramalkan_harga(riwayat, komoditas.nama, horizon)
     except forecast.ModelRisetError:

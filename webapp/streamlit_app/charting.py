@@ -17,21 +17,42 @@ import streamlit as st
 
 from formatting import format_rupiah
 
-_WARNA_HISTORIS = "#199e70"
-_WARNA_PREDIKSI = "#c98500"
-_WARNA_PERINGATAN = "#e14b4b"
-_WARNA_GRID = "rgba(255, 255, 255, 0.08)"
-_WARNA_SUMBU = "rgba(255, 255, 255, 0.18)"
-_WARNA_TEKS_MUTED = "rgba(230, 230, 224, 0.65)"
-_WARNA_TEKS_PRIMER = "rgba(255, 255, 255, 0.95)"
-_CINCIN_PERMUKAAN = "#0d0f0e"
-# Latar chart di-set TETAP gelap (bukan transparan/ikut tema Streamlit) —
-# kalau dibiarkan transparan, chart ini jadi putih kosong tanpa gridline
-# terbaca saat browser/sistem pengguna memakai tema terang (semua warna
-# grid/teks di atas dirancang untuk latar gelap, jadi nyaris tak terlihat
-# di atas latar putih). Dengan latar tetap gelap, chart selalu konsisten
-# terlepas dari preferensi tema perangkat pengguna.
-_WARNA_LATAR = "#12181a"
+# Palet per mode tema. Plotly tak bisa membaca CSS, jadi mode yang aktif
+# dibaca dari `st.context.theme.type` dan latar chart disamakan dengan
+# latar kartu (`--ppj-card-bg` di styles.css). Dulu latar dikunci gelap
+# karena tema Streamlit tak pernah benar-benar gelap; sekarang
+# [theme.light]/[theme.dark] di config.toml membuat mode itu andal.
+_PALET = {
+    "light": {
+        "historis": "#1f8a4c",
+        "prediksi": "#b86e00",
+        "peringatan": "#c8372a",
+        "grid": "rgba(23, 36, 29, 0.07)",
+        "sumbu": "rgba(23, 36, 29, 0.2)",
+        "teks_muted": "#5b6b62",
+        "teks_primer": "#17241d",
+        "latar": "#ffffff",
+        "tooltip": "#ffffff",
+        "tooltip_border": "#dce5df",
+    },
+    "dark": {
+        "historis": "#3dbb72",
+        "prediksi": "#e0a030",
+        "peringatan": "#f07a6c",
+        "grid": "rgba(255, 255, 255, 0.07)",
+        "sumbu": "rgba(255, 255, 255, 0.18)",
+        "teks_muted": "rgba(228, 236, 231, 0.65)",
+        "teks_primer": "rgba(255, 255, 255, 0.95)",
+        "latar": "#141b17",
+        "tooltip": "#1c2520",
+        "tooltip_border": "rgba(255, 255, 255, 0.15)",
+    },
+}
+
+
+def _palet() -> dict[str, str]:
+    # `type` bisa None sebelum browser melapor tema (render pertama) — anggap terang.
+    return _PALET["dark" if st.context.theme.type == "dark" else "light"]
 
 
 def gambar_grafik_harga(
@@ -58,6 +79,7 @@ def gambar_grafik_harga(
     supaya titik yang jadi alasan peringatan langsung terlihat di grafik,
     bukan cuma disebut di teks banner/pop-up.
     """
+    w = _palet()
     ada_prediksi = trajektori_prediksi is not None and not trajektori_prediksi.empty
 
     tanggal_akhir = riwayat["tanggal"].iloc[-1]
@@ -69,7 +91,7 @@ def gambar_grafik_harga(
             x=riwayat["tanggal"],
             y=riwayat["harga"],
             mode="lines",
-            line=dict(color=_WARNA_HISTORIS, width=2),
+            line=dict(color=w["historis"], width=2),
             name="Harga historis",
             hovertemplate="%{x|%d %b %Y}<br>Rp %{y:,.0f}<extra></extra>",
         )
@@ -79,7 +101,7 @@ def gambar_grafik_harga(
             x=[tanggal_akhir],
             y=[harga_akhir],
             mode="markers",
-            marker=dict(size=8, color=_WARNA_HISTORIS, line=dict(width=2, color=_CINCIN_PERMUKAAN)),
+            marker=dict(size=8, color=w["historis"], line=dict(width=2, color=w["latar"])),
             showlegend=False,
             hoverinfo="skip",
         )
@@ -99,7 +121,7 @@ def gambar_grafik_harga(
             yanchor="bottom",
             xshift=10,
             yshift=6,
-            font=dict(color=_WARNA_TEKS_PRIMER, size=12),
+            font=dict(color=w["teks_primer"], size=12),
         )
 
     if ada_prediksi:
@@ -110,12 +132,12 @@ def gambar_grafik_harga(
                 x=x_prediksi,
                 y=y_prediksi,
                 mode="lines+markers",
-                line=dict(color=_WARNA_PREDIKSI, width=2, dash="dash"),
+                line=dict(color=w["prediksi"], width=2, dash="dash"),
                 marker=dict(
                     size=5,
                     symbol="diamond",
-                    color=_WARNA_PREDIKSI,
-                    line=dict(width=1, color=_CINCIN_PERMUKAAN),
+                    color=w["prediksi"],
+                    line=dict(width=1, color=w["latar"]),
                 ),
                 name=prediksi_label or "Prediksi",
                 hovertemplate="%{x|%d %b %Y}<br>Prediksi: Rp %{y:,.0f}<extra></extra>",
@@ -135,7 +157,7 @@ def gambar_grafik_harga(
             yanchor="top",
             xshift=10,
             yshift=-6,
-            font=dict(color=_WARNA_TEKS_PRIMER, size=12),
+            font=dict(color=w["teks_primer"], size=12),
         )
 
         if sorot_peringatan:
@@ -144,7 +166,7 @@ def gambar_grafik_harga(
                     x=[prediksi_tanggal_akhir],
                     y=[prediksi_harga_akhir],
                     mode="markers",
-                    marker=dict(size=18, symbol="circle-open", color=_WARNA_PERINGATAN, line=dict(width=3)),
+                    marker=dict(size=18, symbol="circle-open", color=w["peringatan"], line=dict(width=3)),
                     name="⚠️ Memicu peringatan",
                     hoverinfo="skip",
                 )
@@ -156,8 +178,8 @@ def gambar_grafik_harga(
         xaxis_title="Tanggal",
         yaxis_title=f"Harga (Rp/{unit})",
         template="plotly_white",
-        paper_bgcolor=_WARNA_LATAR,
-        plot_bgcolor=_WARNA_LATAR,
+        paper_bgcolor=w["latar"],
+        plot_bgcolor=w["latar"],
         hovermode="x unified",
         # Legend selalu tampil — bukan cuma saat prediksi aktif — supaya garis
         # "Harga historis" juga eksplisit terlabel di halaman Data Historis
@@ -172,30 +194,30 @@ def gambar_grafik_harga(
             xanchor="left",
             x=0,
             bgcolor="rgba(0,0,0,0)",
-            font=dict(color=_WARNA_TEKS_MUTED, size=12),
+            font=dict(color=w["teks_muted"], size=12),
         ),
         separators=",.",
         hoverlabel=dict(
-            bgcolor="#181c1a",
-            bordercolor="rgba(255,255,255,0.15)",
-            font=dict(color=_WARNA_TEKS_PRIMER, size=13),
+            bgcolor=w["tooltip"],
+            bordercolor=w["tooltip_border"],
+            font=dict(color=w["teks_primer"], size=13),
         ),
-        font=dict(color=_WARNA_TEKS_MUTED),
+        font=dict(color=w["teks_muted"], family="Geist, sans-serif"),
     )
     fig.update_xaxes(
         tickformat="%d %b",
         showgrid=False,
-        color=_WARNA_TEKS_MUTED,
-        linecolor=_WARNA_SUMBU,
+        color=w["teks_muted"],
+        linecolor=w["sumbu"],
         showline=True,
     )
     fig.update_yaxes(
         tickformat=",.0f",
         showgrid=True,
-        gridcolor=_WARNA_GRID,
+        gridcolor=w["grid"],
         gridwidth=1,
         zeroline=False,
-        color=_WARNA_TEKS_MUTED,
+        color=w["teks_muted"],
         rangemode="normal",
     )
     st.plotly_chart(fig, width="stretch", theme=None)

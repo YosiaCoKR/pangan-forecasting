@@ -31,7 +31,7 @@ def _gambar_chart(slug: str, unit: str, hari: int) -> None:
 st.markdown(
     """
     <div class="ppj-hero">
-        <h1>📈 Data Historis</h1>
+        <h1>Data Historis</h1>
         <p>Tren harga 30 / 60 / 90 hari ke belakang (data tiruan).</p>
     </div>
     """,
@@ -55,10 +55,10 @@ komoditas_terpilih = next(k for k in komoditas_list if k.nama == nama_terpilih)
 label_rentang = label_rentang or "30 Hari"
 hari_terpilih = RENTANG_HISTORIS[label_rentang]
 
-kolom_chart, kolom_prediksi = st.columns([3, 1], gap="medium")
+kolom_chart, kolom_prediksi = st.columns([7, 3], gap="medium")
 
 with kolom_chart:
-    st.markdown(f"#### Tren Harga — {komoditas_terpilih.nama} ({label_rentang})")
+    st.markdown(f"#### Tren Harga {komoditas_terpilih.nama} ({label_rentang})")
     _gambar_chart(komoditas_terpilih.slug, komoditas_terpilih.unit, hari_terpilih)
 
 with kolom_prediksi:

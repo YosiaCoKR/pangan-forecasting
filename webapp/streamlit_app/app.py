@@ -35,31 +35,31 @@ def main() -> None:
     dashboard_page = st.Page(
         "views/dashboard.py",
         title="Dashboard Pangan",
-        icon="🏠",
+        icon=":material/space_dashboard:",
         default=True,
     )
     historis_page = st.Page(
         "views/historis.py",
         title="Data Historis",
-        icon="📈",
+        icon=":material/show_chart:",
     )
     perbandingan_prediksi_page = st.Page(
         "views/perbandingan_prediksi.py",
         title="Aktual vs Prediksi",
-        icon="📊",
+        icon=":material/compare_arrows:",
         url_path="aktual-vs-prediksi",
     )
     detail_komoditas_page = st.Page(
         "views/detail_komoditas.py",
         title="Detail Komoditas",
-        icon="🔍",
+        icon=":material/search:",
         url_path="detail-komoditas",
         visibility="hidden",
     )
     admin_login_page = st.Page(
         "views/admin_login.py",
         title="Panel Admin",
-        icon="🔒",
+        icon=":material/lock:",
     )
     # Halaman kerja admin baru muncul di sidebar SETELAH login — sebelum itu,
     # cuma "Panel Admin" (login) yang terlihat di grup Admin. Ini bukan
@@ -70,25 +70,25 @@ def main() -> None:
     admin_input_harga_page = st.Page(
         "views/admin_input_harga.py",
         title="Input Harga Terbaru",
-        icon="✏️",
+        icon=":material/edit_note:",
         visibility=visibilitas_admin,
     )
     admin_model_settings_page = st.Page(
         "views/admin_model_settings.py",
         title="Pengaturan Model",
-        icon="⚙️",
+        icon=":material/tune:",
         visibility=visibilitas_admin,
     )
     admin_ambang_settings_page = st.Page(
         "views/admin_ambang_settings.py",
         title="Pengaturan Ambang",
-        icon="🚨",
+        icon=":material/notifications_active:",
         visibility=visibilitas_admin,
     )
     admin_audit_log_page = st.Page(
         "views/admin_audit_log.py",
         title="Audit Log",
-        icon="🗂️",
+        icon=":material/history:",
         visibility=visibilitas_admin,
     )
 

@@ -22,7 +22,7 @@ require_admin()
 st.markdown(
     """
     <div class="ppj-hero">
-        <h1>🗂️ Audit Log</h1>
+        <h1>Audit Log</h1>
         <p>Riwayat login/logout &amp; perubahan data admin (harga, model aktif, ambang EWS).</p>
     </div>
     """,

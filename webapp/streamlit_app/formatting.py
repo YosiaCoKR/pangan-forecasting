@@ -37,4 +37,4 @@ def tren_status(harga_terbaru: float, harga_kemarin: float) -> tuple[str, str]:
     if selisih < 0:
         persen = abs(selisih) / harga_kemarin * 100
         return "turun", f"▼ {persen:.1f}%"
-    return "tetap", "— tetap"
+    return "tetap", "Tetap"

@@ -21,7 +21,7 @@ require_admin()
 st.markdown(
     """
     <div class="ppj-hero">
-        <h1>✏️ Input Harga Terbaru</h1>
+        <h1>Input Harga Terbaru</h1>
         <p>Catat harga terbaru satu komoditas untuk tanggal tertentu (data tiruan).</p>
     </div>
     """,
