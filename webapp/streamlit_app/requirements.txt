@@ -1,10 +1,8 @@
-streamlit>=1.36
+streamlit>=1.53
 pandas
 plotly
 python-dotenv
 joblib
 scikit-learn
-statsmodels
-sktime
 skforecast
 lightgbm
