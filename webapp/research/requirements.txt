@@ -9,5 +9,6 @@ statsmodels
 feature_engine
 skforecast
 lightgbm
+xgboost
 pygad
 joblib
