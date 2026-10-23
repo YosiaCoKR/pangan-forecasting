@@ -1,7 +1,7 @@
 """Halaman login Panel Admin — form username + kata sandi dari konfigurasi.
 
 Setelah berhasil masuk, halaman ini jadi hub navigasi ke halaman admin
-lain (Input Harga Terbaru, Pengaturan Model, dst.) di balik gerbang
+lain (Pengaturan Model, Pengaturan Ambang, dst.) di balik gerbang
 `auth.admin_sudah_masuk()`. Halaman-halaman itu juga baru muncul di
 sidebar setelah login — lihat `app.py`.
 """
@@ -50,12 +50,7 @@ def _tampilan_sudah_masuk() -> None:
         unsafe_allow_html=True,
     )
 
-    kolom_a, kolom_b, kolom_c, kolom_d = st.columns(4)
-    with kolom_a:
-        with st.container(border=True):
-            st.markdown("#### ✏️ Input Harga Terbaru")
-            st.caption("Catat harga terbaru satu komoditas untuk tanggal tertentu.")
-            st.page_link("views/admin_input_harga.py", label="Buka halaman", icon="➡️")
+    kolom_b, kolom_c, kolom_d = st.columns(3)
     with kolom_b:
         with st.container(border=True):
             st.markdown("#### ⚙️ Pengaturan Model")

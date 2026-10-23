@@ -43,12 +43,6 @@ def main() -> None:
         title="Data Historis",
         icon=":material/show_chart:",
     )
-    perbandingan_prediksi_page = st.Page(
-        "views/perbandingan_prediksi.py",
-        title="Aktual vs Prediksi",
-        icon=":material/compare_arrows:",
-        url_path="aktual-vs-prediksi",
-    )
     detail_komoditas_page = st.Page(
         "views/detail_komoditas.py",
         title="Detail Komoditas",
@@ -67,12 +61,6 @@ def main() -> None:
     # masih diblokir), cuma supaya navbar terasa benar-benar terpisah antara
     # publik dan admin yang sudah masuk.
     visibilitas_admin = "visible" if admin_sudah_masuk() else "hidden"
-    admin_input_harga_page = st.Page(
-        "views/admin_input_harga.py",
-        title="Input Harga Terbaru",
-        icon=":material/edit_note:",
-        visibility=visibilitas_admin,
-    )
     admin_model_settings_page = st.Page(
         "views/admin_model_settings.py",
         title="Pengaturan Model",
@@ -97,12 +85,10 @@ def main() -> None:
             "Menu": [
                 dashboard_page,
                 historis_page,
-                perbandingan_prediksi_page,
                 detail_komoditas_page,
             ],
             "Admin": [
                 admin_login_page,
-                admin_input_harga_page,
                 admin_model_settings_page,
                 admin_ambang_settings_page,
                 admin_audit_log_page,

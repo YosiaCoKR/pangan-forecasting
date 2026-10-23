@@ -6,3 +6,4 @@ joblib
 scikit-learn
 skforecast
 lightgbm
+xgboost

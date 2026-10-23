@@ -1,7 +1,7 @@
 """Tampilan detail komoditas: hero info harga, grafik historis + garis prediksi.
 
 Prediksi memakai model riset asli lewat `forecast.ramalkan_hasil_horizon`
-(GA-LightGBM log + differencing, tanpa pelatihan ulang) — bukan lagi
+(LightGBM hasil tuning, log + differencing, tanpa pelatihan ulang) — bukan lagi
 `data.mock_prices.get_mock_prediction`. Panel kontrol prediksi (horizon
 picker, tombol, hasil) ada di `komponen_prediksi.panel_prediksi` — komponen
 bersama supaya halaman lain yang butuh kontrol serupa tak perlu duplikasi.

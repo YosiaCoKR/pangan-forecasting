@@ -1,7 +1,7 @@
 """Data harga historis — dasar dari dataset riset ASLI, edit admin persisten ke `.pkl`.
 
 Riwayat dasar tiap komoditas dimuat dari `DATASET-BERAS.csv` (dataset riset
-sungguhan yang juga dipakai melatih model MSTL/GA-LightGBM — lihat
+sungguhan yang juga dipakai melatih model LightGBM — lihat
 `_muat_dataset_riset`), BUKAN lagi random walk tiruan. Dataset ini mencakup
 ~60 hari data SETELAH akhir data train model, cukup untuk peramalan langsung
 bisa dicoba tanpa menunggu admin mengisi harga dulu (lihat docstring
@@ -63,7 +63,7 @@ def _muat_dataset_riset() -> pd.DataFrame:
 
     Pra-proses PERSIS sama seperti `code.ipynb` (index tanggal harian lewat
     `asfreq("D")` + interpolasi berbasis waktu untuk mengisi celah) supaya
-    konsisten dengan data yang dipakai melatih model MSTL/GA-LightGBM —
+    konsisten dengan data yang dipakai melatih model LightGBM —
     `forecast.py` memuat model hasil riset, modul ini yang memuat dataset
     mentahnya (satu-satunya pembaca CSV di aplikasi).
     """
@@ -202,8 +202,9 @@ def _rerun_pra_proses(slug: str) -> None:
 
     try:
         riwayat = get_price_history(slug, hari=RENTANG_HARI_MAKS)
+        kunci_model = forecast.model_aktif().kunci
         for horizon in forecast.HORIZON_TERSEDIA:
-            forecast.ramalkan_harga(riwayat, komoditas.nama, horizon)
+            forecast.ramalkan_harga(riwayat, komoditas.nama, horizon, kunci_model)
     except forecast.ModelRisetError:
         # Artefak model riset belum/tidak tersedia, atau riwayat belum cukup
         # panjang untuk forecaster — bukan tanggung jawab tambah_harga_baru

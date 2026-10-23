@@ -80,7 +80,7 @@ def keluar_dari_admin() -> None:
 
 
 def require_admin() -> None:
-    """Panggil di awal skrip halaman admin selain login (Input Harga, Pengaturan
+    """Panggil di awal skrip halaman admin selain login (Pengaturan
     Model, dst). Menghentikan render halaman kalau sesi admin belum aktif,
     supaya rute admin tidak bisa dilihat isinya lewat akses URL langsung
     tanpa login.

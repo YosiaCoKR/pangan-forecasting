@@ -9,16 +9,14 @@ Aplikasi skripsi untuk memantau dan memprediksi harga 9 komoditas pangan di Prov
 - **Dashboard**: harga terkini 9 komoditas per kategori, tren dibanding kemarin, dan ringkasan jumlah komoditas yang naik, turun, atau tetap. Prediksi 1/7/30 hari bisa langsung dihitung dari kartu tiap komoditas.
 - **Detail komoditas**: grafik harga 90 hari plus lintasan prediksi harian sampai H+1, H+7, atau H+30.
 - **Data historis**: tren harga 30/60/90 hari ke belakang.
-- **Aktual vs Prediksi**: perbandingan harga aktual dengan tiga lintasan prediksi untuk semua komoditas.
 - **Peringatan dini (EWS)**: banner dan pop-up bila prediksi H+30 melewati ambang komoditas tersebut (default kenaikan ≥ 10%, atau harga tetap yang diatur admin).
 - Tampilan mengikuti mode terang/gelap perangkat pengguna, termasuk grafik.
 
 ### Admin
 
 - Login dengan username dan kata sandi dari environment variable (tanpa tabel akun).
-- Input harga terbaru; tersimpan ke `data/harga_historis.pkl` dan cache prediksi komoditas itu langsung dihitung ulang.
 - Pengaturan ambang EWS per komoditas (persen kenaikan atau harga tetap).
-- Pengaturan model aktif. **Catatan:** daftar model di halaman ini masih data tiruan (`data/mock_models.py`); prediksi selalu memakai model di `webapp/research/final_model/`.
+- Pengaturan model aktif. **Catatan:** daftar model di halaman ini masih data tiruan (`data/mock_models.py`); prediksi selalu memakai model di `webapp/research/final_lgbm/`.
 - Audit log: login/logout dan setiap perubahan data admin dicatat ke SQLite (`tracking.db`).
 
 ## Struktur repository
@@ -29,13 +27,15 @@ pangan-forecasting/
 ├── venv/                              # virtual environment lokal (tidak di-commit)
 └── webapp/
     ├── research/
-    │   ├── code_run_all.ipynb         # pipeline lengkap: EDA, GA, evaluasi, simpan model
-    │   ├── code_run_training.ipynb    # memuat hasil GA (forecast_ga/) yang sudah ada
+    │   ├── code_run_all.ipynb         # pipeline lengkap: EDA, tuning, evaluasi, simpan model
+    │   ├── code_run_training.ipynb    # latih ulang dari params/ yang sudah ada (tanpa tuning)
     │   ├── DATASET-BERAS.csv          # harga harian 9 komoditas (ribuan rupiah)
     │   ├── requirements.txt           # dependency notebook
-    │   ├── forecast_ga/               # forecaster hasil GA (27 file .joblib)
-    │   ├── final_model/               # 27 model final yang DIMUAT APLIKASI
-    │   └── models/                    # hyperparameter GA (+ artefak MSTL lama, tidak dipakai lagi)
+    │   ├── tuned_lgbm/                # forecaster LightGBM hasil tuning (27 .joblib)
+    │   ├── tuned_xgb/                 # forecaster XGBoost hasil tuning (27 .joblib)
+    │   ├── final_lgbm/                # 27 model final LightGBM yang DIMUAT APLIKASI
+    │   ├── final_xgb/                 # 27 model final XGBoost yang DIMUAT APLIKASI
+    │   └── params/                    # hyperparameter hasil tuning (+ artefak MSTL lama, tidak dipakai lagi)
     └── streamlit_app/
         ├── app.py                     # entry point & navigasi
         ├── forecast.py                # muat model final + hitung prediksi
@@ -79,7 +79,7 @@ Satu model per komoditas × horizon, total **27 model** (9 komoditas × 3 horizo
 4. Hyperparameter LightGBM dicari dengan Genetic Algorithm (`pygad`).
 5. Prediksi dikembalikan ke rupiah: `expm1(prediksi) × 1000`.
 
-Di aplikasi, `forecast.py` mengulang langkah 1, 2, dan 5 pada 90 hari harga terakhir, lalu memanggil model di `final_model/`. Tidak ada pelatihan ulang. Hasilnya di-cache per isi riwayat, sehingga otomatis dihitung ulang saat admin memasukkan harga baru.
+Di aplikasi, `forecast.py` mengulang langkah 1, 2, dan 5 pada 90 hari harga terakhir, lalu memanggil model di `final_lgbm/` atau `final_xgb/` sesuai pilihan admin. Tidak ada pelatihan ulang. Hasilnya di-cache per isi riwayat, sehingga otomatis dihitung ulang saat admin memasukkan harga baru.
 
 ## Persiapan
 
@@ -117,12 +117,12 @@ cd webapp/research
 jupyter notebook code_run_all.ipynb
 ```
 
-Pilih **Kernel → Restart Kernel and Run All Cells**, jangan menjalankan sel satu per satu. Sel penyimpanan (bagian 34) menyimpan isi variabel `forecasters_ga` yang ada di memori kernel. Kalau sel pelatihan GA (bagian 21 sampai 24) tidak ikut dijalankan, yang tersimpan adalah model dari sesi sebelumnya. Proses GA untuk 27 model memakan waktu cukup lama.
+Pilih **Kernel → Restart Kernel and Run All Cells**, jangan menjalankan sel satu per satu. Sel penyimpanan (bagian 34) menyimpan isi variabel `forecasters_tuned_lgbm` yang ada di memori kernel. Kalau sel pencarian hyperparameter (bagian 21 sampai 24) tidak ikut dijalankan, yang tersimpan adalah model dari sesi sebelumnya. Proses GA untuk 27 model memakan waktu cukup lama.
 
-Setelah selesai, pastikan file di `final_model/` bertanggal hari ini, lalu restart Streamlit:
+Setelah selesai, pastikan file di `final_lgbm/` bertanggal hari ini, lalu restart Streamlit:
 
 ```bash
-ls -la webapp/research/final_model | head
+ls -la webapp/research/final_lgbm | head
 ```
 
 ### Pengaman artefak lama
