@@ -30,6 +30,27 @@ def _ramalkan(
         return None
 
 
+def _rincian_harian(hasil: forecast.HasilPeramalan) -> pd.DataFrame:
+    """Lintasan harian H+1..H+horizon jadi tabel siap tampil.
+
+    `hasil.trajektori` sudah berisi harga tiap hari (dipakai juga oleh grafik
+    di Detail Komoditas) — di sini cuma diformat; tidak ada peramalan ulang.
+    Kolom "Perubahan" adalah selisih KUMULATIF terhadap harga aktual terakhir,
+    bukan terhadap hari sebelumnya, supaya konsisten dengan `persen_perubahan`
+    pada metrik ringkas di atas panel.
+    """
+    trajektori = hasil.trajektori
+    persen = (trajektori - hasil.harga_sekarang) / hasil.harga_sekarang * 100
+    return pd.DataFrame(
+        {
+            "Hari": [f"H+{nomor}" for nomor in range(1, len(trajektori) + 1)],
+            "Tanggal": trajektori.index.strftime("%d %b %Y"),
+            "Harga": [f"Rp {format_rupiah(nilai)}" for nilai in trajektori],
+            "Perubahan": [f"{nilai:+.2f}%" for nilai in persen],
+        }
+    )
+
+
 def panel_prediksi(
     key_prefix: str, riwayat: pd.DataFrame, nama_komoditas: str
 ) -> tuple[int | None, forecast.HasilPeramalan | None]:
@@ -69,6 +90,22 @@ def panel_prediksi(
             delta=f"{hasil.persen_perubahan:+.2f}%",
         )
         st.caption(f"Dihitung dengan model **{hasil.model_dipakai}**.")
+
+        # Rincian per hari hanya berguna kalau lintasannya lebih dari satu
+        # titik — untuk horizon 1 hari, metrik di atas SUDAH angka H+1.
+        if len(hasil.trajektori) > 1:
+            with st.popover(
+                f"Lihat rincian {rentang_terpilih} hari", width="stretch"
+            ):
+                st.caption(
+                    "Perubahan dihitung dari harga saat ini "
+                    f"(Rp {format_rupiah(hasil.harga_sekarang)})."
+                )
+                st.dataframe(
+                    _rincian_harian(hasil),
+                    hide_index=True,
+                    width="stretch",
+                )
     elif gagal_diramal:
         st.markdown(
             '<div class="ppj-placeholder">Prediksi belum tersedia untuk komoditas '
