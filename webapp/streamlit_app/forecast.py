@@ -13,7 +13,9 @@ Artefak yang dimuat (read-only, di-cache di memori per proses Streamlit)
 `final_xgb/final_xgb_<nama_komoditas>_h<horizon>.joblib` (XGBoost)
 
 Model mana yang dipakai ditentukan admin lewat halaman Pengaturan Model
-(tersimpan di `config.json`, dibaca lewat `model_aktif()`). Kedua artefak
+(tersimpan di `config.json`, dibaca lewat `model_aktif()`) — ada satu model
+default global PLUS override opsional per komoditas, jadi mis. Beras Kualitas
+Bawah I bisa pakai XGBoost sementara komoditas lain tetap LightGBM. Kedua artefak
 dihasilkan pipeline yang sama di `code_run_all.ipynb` (bagian 35-43), jadi
 jalur pemuatan, `window_size`, dan pembalikan skala-nya identik.
 
@@ -70,14 +72,14 @@ class InfoModel:
 MODEL_TERSEDIA: dict[str, InfoModel] = {
     "lightgbm": InfoModel(
         kunci="lightgbm",
-        nama="LightGBM (log + differencing)",
+        nama="LightGBM",
         deskripsi="LightGBM, hyperparameter hasil tuning (objective regression_l1)",
         folder="final_lgbm",
         prefix="final_lgbm",
     ),
     "xgboost": InfoModel(
         kunci="xgboost",
-        nama="XGBoost (log + differencing)",
+        nama="XGBoost",
         deskripsi="XGBoost pembanding, protokol tuning identik (objective reg:absoluteerror)",
         folder="final_xgb",
         prefix="final_xgb",
@@ -86,14 +88,22 @@ MODEL_TERSEDIA: dict[str, InfoModel] = {
 MODEL_DEFAULT = "lightgbm"
 
 
-def model_aktif() -> InfoModel:
+def model_aktif(nama_komoditas: str | None = None) -> InfoModel:
     """Model yang dipilih admin di Pengaturan Model.
+
+    Urutan prioritas: override khusus `nama_komoditas` (kalau admin
+    menyetelnya) -> model default global -> `MODEL_DEFAULT`. Artefak memang
+    satu per komoditas x horizon, jadi tiap komoditas boleh pakai model yang
+    berbeda — mis. Beras Kualitas Bawah I pakai XGBoost sementara yang lain
+    tetap LightGBM.
 
     Jatuh ke `MODEL_DEFAULT` kalau `config.json` belum pernah diisi ATAU
     berisi kunci yang tidak dikenal (mis. sisa konfigurasi versi lama) —
     halaman publik tidak boleh gagal cuma karena nilai konfigurasi basi.
     """
-    return MODEL_TERSEDIA.get(config.get_model_aktif() or MODEL_DEFAULT, MODEL_TERSEDIA[MODEL_DEFAULT])
+    kunci = config.get_model_komoditas(nama_komoditas) if nama_komoditas else None
+    kunci = kunci or config.get_model_aktif() or MODEL_DEFAULT
+    return MODEL_TERSEDIA.get(kunci, MODEL_TERSEDIA[MODEL_DEFAULT])
 
 # Model riset dilatih pada harga dalam RIBUAN rupiah (nilai `13.25` di
 # DATASET-BERAS.csv = Rp 13.250/kg). Semua konversi ke/dari Rupiah aktual di
@@ -229,7 +239,7 @@ def ramalkan_hasil_horizon(
     pembacaan config-nya dilakukan DI SINI, bukan di dalam `ramalkan_harga`
     yang di-cache, supaya kunci cache tetap menyebut model yang konkret.
     """
-    info = MODEL_TERSEDIA[kunci_model] if kunci_model else model_aktif()
+    info = MODEL_TERSEDIA[kunci_model] if kunci_model else model_aktif(nama_komoditas)
     harga_sekarang = float(riwayat.sort_values("tanggal")["harga"].iloc[-1])
 
     trajektori = ramalkan_harga(riwayat, nama_komoditas, horizon, info.kunci)

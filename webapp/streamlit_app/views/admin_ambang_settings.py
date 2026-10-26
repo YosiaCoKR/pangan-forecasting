@@ -9,7 +9,6 @@ Tidak melatih ulang model apa pun, hanya menyimpan nilai ambang ke
 from __future__ import annotations
 
 import streamlit as st
-
 from auth import require_admin, sesi_admin_saat_ini, tombol_logout
 from config import get_ambang_ews, reset_ambang_ews, set_ambang_ews
 from data.mock_commodities import get_komoditas_list
@@ -19,9 +18,18 @@ from formatting import format_rupiah
 
 def _ringkas_ambang(persen_kenaikan: float | None, harga_tetap: float | None) -> str:
     bagian = []
-    bagian.append(f"naik≥{persen_kenaikan:.0f}%" if persen_kenaikan is not None else "naik: nonaktif")
-    bagian.append(f"harga≥Rp{format_rupiah(harga_tetap)}" if harga_tetap is not None else "harga: nonaktif")
+    bagian.append(
+        f"naik≥{persen_kenaikan:.0f}%"
+        if persen_kenaikan is not None
+        else "naik: nonaktif"
+    )
+    bagian.append(
+        f"harga≥Rp{format_rupiah(harga_tetap)}"
+        if harga_tetap is not None
+        else "harga: nonaktif"
+    )
     return ", ".join(bagian)
+
 
 require_admin()
 
@@ -45,7 +53,11 @@ st.markdown("#### Ubah Ambang Komoditas")
 _, kolom_form, _ = st.columns([1, 1.6, 1])
 with kolom_form:
     with st.container(border=True):
-        nama_terpilih = st.selectbox("Komoditas", options=[k.nama for k in komoditas_list], key="ambang-komoditas")
+        nama_terpilih = st.selectbox(
+            "Komoditas",
+            options=[k.nama for k in komoditas_list],
+            key="ambang-komoditas",
+        )
         komoditas_terpilih = next(k for k in komoditas_list if k.nama == nama_terpilih)
 
         ambang_sekarang = get_ambang_ews(komoditas_terpilih.slug)
@@ -125,18 +137,25 @@ with kolom_form:
             ambang_terkini["harga_tetap"],
         ):
             with slot_peringatan:
-                st.warning("⚠️ Perubahan belum disimpan. Klik **Simpan Ambang** untuk menerapkan.")
+                st.warning(
+                    "⚠️ Perubahan belum disimpan. Klik **Simpan Ambang** untuk menerapkan."
+                )
 
 ambang_final = get_ambang_ews(komoditas_terpilih.slug)
 with slot_ambang_aktif:
     st.markdown(f"#### Ambang Saat Ini: {komoditas_terpilih.nama}")
     with st.container(border=True):
-        if ambang_final["persen_kenaikan"] is None and ambang_final["harga_tetap"] is None:
+        if (
+            ambang_final["persen_kenaikan"] is None
+            and ambang_final["harga_tetap"] is None
+        ):
             st.caption("Belum ada ambang aktif untuk komoditas ini.")
         else:
             if ambang_final["persen_kenaikan"] is not None:
                 st.markdown(f"**Kenaikan ≥ {ambang_final['persen_kenaikan']:.0f}%**")
             if ambang_final["harga_tetap"] is not None:
-                st.markdown(f"**Harga ≥ Rp {format_rupiah(ambang_final['harga_tetap'])}**")
+                st.markdown(
+                    f"**Harga ≥ Rp {format_rupiah(ambang_final['harga_tetap'])}**"
+                )
 
 tombol_logout()

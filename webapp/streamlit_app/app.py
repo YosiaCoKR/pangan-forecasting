@@ -61,6 +61,12 @@ def main() -> None:
     # masih diblokir), cuma supaya navbar terasa benar-benar terpisah antara
     # publik dan admin yang sudah masuk.
     visibilitas_admin = "visible" if admin_sudah_masuk() else "hidden"
+    admin_input_harga_page = st.Page(
+        "views/admin_input_harga.py",
+        title="Input Harga Terbaru",
+        icon=":material/edit_note:",
+        visibility=visibilitas_admin,
+    )
     admin_model_settings_page = st.Page(
         "views/admin_model_settings.py",
         title="Pengaturan Model",
@@ -89,6 +95,7 @@ def main() -> None:
             ],
             "Admin": [
                 admin_login_page,
+                admin_input_harga_page,
                 admin_model_settings_page,
                 admin_ambang_settings_page,
                 admin_audit_log_page,

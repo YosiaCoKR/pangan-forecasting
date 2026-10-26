@@ -43,7 +43,15 @@ def _ambang_ews_default() -> dict[str, dict]:
     }
 
 
-_DEFAULT_CONFIG = {"model_aktif": None, "ambang_ews": _ambang_ews_default()}
+_DEFAULT_CONFIG = {
+    "model_aktif": None,
+    # Override model PER komoditas, di-key dengan NAMA komoditas (= nama
+    # kolom dataset = bagian nama file artefak), bukan slug: pilihan model
+    # memang soal artefak mana yang dipakai. Komoditas yang tidak ada di
+    # sini memakai `model_aktif` sebagai default.
+    "model_per_komoditas": {},
+    "ambang_ews": _ambang_ews_default(),
+}
 
 
 def _muat_config() -> dict:
@@ -74,6 +82,7 @@ def get_model_aktif() -> str | None:
 
 
 def set_model_aktif(nama_file: str) -> None:
+    """Model default global — dipakai komoditas yang tidak punya override."""
     config = _muat_config()
     config["model_aktif"] = nama_file
     _simpan_config(config)
@@ -100,3 +109,25 @@ def reset_ambang_ews(slug: str) -> None:
         harga_tetap=AMBANG_EWS_DEFAULT["harga_tetap"],
         persen_kenaikan=AMBANG_EWS_DEFAULT["persen_kenaikan"],
     )
+
+
+def get_model_per_komoditas() -> dict[str, str]:
+    """Seluruh override model per komoditas: `{nama_komoditas: kunci_model}`."""
+    return dict(_muat_config().get("model_per_komoditas") or {})
+
+
+def get_model_komoditas(nama_komoditas: str) -> str | None:
+    """Kunci model khusus komoditas ini, atau `None` kalau ikut default global."""
+    return get_model_per_komoditas().get(nama_komoditas)
+
+
+def set_model_komoditas(nama_komoditas: str, kunci_model: str | None) -> None:
+    """Setel/hapus override model satu komoditas (`None` = ikut default global)."""
+    config = _muat_config()
+    per_komoditas = dict(config.get("model_per_komoditas") or {})
+    if kunci_model is None:
+        per_komoditas.pop(nama_komoditas, None)
+    else:
+        per_komoditas[nama_komoditas] = kunci_model
+    config["model_per_komoditas"] = per_komoditas
+    _simpan_config(config)
