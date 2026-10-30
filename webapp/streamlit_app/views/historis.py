@@ -32,7 +32,7 @@ st.markdown(
     """
     <div class="ppj-hero">
         <h1>Data Historis</h1>
-        <p>Tren harga 30 / 60 / 90 hari ke belakang (data tiruan).</p>
+        <p>Tren harga 30 / 60 / 90 hari ke belakang.</p>
     </div>
     """,
     unsafe_allow_html=True,

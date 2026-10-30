@@ -81,7 +81,7 @@ def _gambar_hero(slug: str) -> None:
                 <span class="ppj-hero-detail-icon">{komoditas.ikon}</span>
                 <div>
                     <h1>{komoditas.nama}</h1>
-                    <p>Grafik pergerakan harga 90 hari terakhir (data tiruan).</p>
+                    <p>Grafik pergerakan harga 90 hari terakhir.</p>
                 </div>
             </div>
             <div class="ppj-hero-detail-price">

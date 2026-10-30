@@ -1,6 +1,6 @@
 # Prediksi Pangan Jogja
 
-Aplikasi skripsi untuk memantau dan memprediksi harga 9 komoditas pangan di Provinsi DIY (6 jenis beras, bawang merah, cabai rawit hijau, cabai rawit merah). Prediksi 1, 7, dan 30 hari dibuat oleh model **LightGBM** yang kombinasi hyperparameter-nya **dicari** dengan Genetic Algorithm (**GA-LightGBM**), dilatih di notebook riset lalu dimuat oleh aplikasi Streamlit tanpa pelatihan ulang.
+Aplikasi skripsi untuk memantau dan memprediksi harga 9 komoditas pangan di Provinsi DIY (6 jenis beras, bawang merah, cabai rawit hijau, cabai rawit merah). Prediksi 1, 7, dan 30 hari dibuat oleh model **LightGBM** yang kombinasi hyperparameter-nya **dicari secara otomatis**, dilatih di notebook riset lalu dimuat oleh aplikasi Streamlit tanpa pelatihan ulang.
 
 ## Fitur
 
@@ -76,7 +76,7 @@ Satu model per komoditas × horizon, total **27 model** (9 komoditas × 3 horizo
 1. Harga harian (dalam ribuan rupiah) dirapikan: `asfreq("D")` lalu celah diisi dengan interpolasi berbasis waktu.
 2. Target diubah ke skala log: `log1p(harga)`.
 3. `skforecast.ForecasterDirect` dengan `differentiation=1`. Model mempelajari perubahan harian log harga. Fitur: lag 1/7/30, rolling mean/std/min/max 7 dan 30 hari, serta fitur kalender siklikal.
-4. Kombinasi hyperparameter LightGBM dicari dengan Genetic Algorithm (`pygad`).
+4. Kombinasi hyperparameter LightGBM dicari secara otomatis (`pygad`).
 5. Prediksi dikembalikan ke rupiah: `expm1(prediksi) × 1000`.
 
 Di aplikasi, `forecast.py` mengulang langkah 1, 2, dan 5 pada 90 hari harga terakhir, lalu memanggil model di `final_lgbm/` atau `final_xgb/` sesuai pilihan admin. Tidak ada pelatihan ulang. Hasilnya di-cache per isi riwayat, sehingga otomatis dihitung ulang saat admin memasukkan harga baru.
@@ -131,4 +131,4 @@ ls -la webapp/research/final_lgbm | head
 
 ## Teknologi
 
-Python, Streamlit, Pandas, Plotly, skforecast, LightGBM, pygad (Genetic Algorithm), scikit-learn, SQLite, python-dotenv, Jupyter Notebook.
+Python, Streamlit, Pandas, Plotly, skforecast, LightGBM, pygad, scikit-learn, SQLite, python-dotenv, Jupyter Notebook.
