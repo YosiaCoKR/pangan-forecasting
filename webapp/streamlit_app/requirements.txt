@@ -1,9 +1,20 @@
-streamlit>=1.53
-pandas
-plotly
-python-dotenv
-joblib
-scikit-learn
-skforecast
-lightgbm
-xgboost
+# SENGAJA identik dengan requirements.txt di ROOT repo.
+# Streamlit Community Cloud bisa memilih salah satu dari keduanya (root, atau
+# yang sefolder dengan app.py). Kalau berkas ini dibiarkan longgar, deploy
+# bisa memasang versi terbaru dan memuat artefak pickle di
+# webapp/research/final_*/ dengan versi pustaka yang berbeda dari saat
+# melatih — tidak error, tapi angkanya berubah. Jadi keduanya di-pin sama.
+# Ubah salah satu, ubah yang lain.
+
+streamlit==1.64.0
+pandas==2.3.3
+numpy==2.5.3
+plotly==7.1.0
+python-dotenv==1.2.3
+
+# Jalur pemuatan model — lihat catatan pin di atas.
+skforecast==0.25.0
+scikit-learn==1.9.1
+lightgbm==4.7.0
+xgboost==3.4.1
+joblib==1.6.0
