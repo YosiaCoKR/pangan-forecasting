@@ -10,7 +10,13 @@ from __future__ import annotations
 
 import streamlit as st
 
-from auth import admin_sudah_masuk, login, sesi_berakhir_karena_idle, tombol_logout
+from auth import (
+    admin_dikonfigurasi,
+    admin_sudah_masuk,
+    login,
+    sesi_berakhir_karena_idle,
+    tombol_logout,
+)
 
 
 def _form_login() -> None:
@@ -31,6 +37,18 @@ def _form_login() -> None:
                 "Sesi admin sudah berakhir — otomatis keluar setelah 15 menit "
                 "tanpa aktivitas. Silakan masuk lagi."
             )
+        # Tidak ada kredensial default (lihat `auth.py`) — kalau
+        # ADMIN_USERNAME/ADMIN_PASSWORD belum disetel, form-nya pasti gagal.
+        # Jelaskan sebabnya, jangan tampilkan "kata sandi salah" yang
+        # menyesatkan.
+        if not admin_dikonfigurasi():
+            st.warning(
+                "Panel admin belum dikonfigurasi. Setel **ADMIN_USERNAME** & "
+                "**ADMIN_PASSWORD** lebih dulu — di Streamlit Community Cloud "
+                "lewat *Settings > Secrets*, atau lokal lewat berkas `.env`."
+            )
+            return
+
         with st.container(border=True):
             with st.form("form-login-admin"):
                 username = st.text_input("Username admin")

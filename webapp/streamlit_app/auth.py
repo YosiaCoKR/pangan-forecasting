@@ -2,26 +2,37 @@
 
 Tidak ada tabel `users` maupun akun terdaftar (sesuai PRD): username & kata
 sandi disetel sekali lewat environment variable, bukan pendaftaran akun.
-Status masuk admin disimpan sebagai sesi sisi server: id sesi acak dipegang
-di `st.query_params` (ikut URL, jadi tahan refresh browser — `st.session_state`
-sendiri hilang begitu halaman di-reload), sedangkan waktu aktivitas terakhir
-dipegang proses server. Sesi gugur sendiri setelah 15 menit tanpa aktivitas
-(`_TIMEOUT_SESI`) dan ikut hilang kalau server di-restart. Setiap
-login/logout dicatat ke `db.admin_login_logs` (audit ringan, tanpa identitas
-selain peran "admin") — yang masuk log cuma hash pendek id sesi
-(`_kode_audit`), bukan id sesinya.
 
-Konsekuensi yang perlu diketahui: karena ikut di URL, id sesi itu setara
-token akses — URL halaman admin jangan dibagikan/di-screenshot selama sesi
-masih hidup. Kalau nanti butuh yang lebih rapat, pindahkan id sesi ke cookie
-HttpOnly (butuh komponen cookie manager atau reverse proxy auth) tanpa
-mengubah bagian lain modul ini.
+Sesi admin disimpan SEPENUHNYA di sisi server: `st.session_state` memegang id
+sesi untuk tab yang sedang terbuka, dan `_sesi_aktif()` (dibagi antar koneksi
+di proses yang sama) memegang waktu dibuat + waktu aktivitas terakhir. Sesi
+gugur setelah 15 menit tanpa aktivitas (`_TIMEOUT_IDLE`), paling lama 8 jam
+sejak login walaupun terus dipakai (`_TIMEOUT_ABSOLUT`), dan ikut hilang kalau
+server di-restart.
+
+Id sesi SENGAJA TIDAK pernah masuk URL. Versi sebelumnya menitipkannya di
+`st.query_params` (`?sid=...`) supaya sesi tahan refresh browser, tapi itu
+membuat URL setara kata sandi: ikut tersimpan di riwayat browser, ikut
+ter-screenshot, dan ikut terkirim kalau URL-nya dibagikan. Untuk panel yang
+bisa mengubah harga & model, harga kenyamanan itu terlalu mahal. Konsekuensi
+yang diterima: refresh halaman (F5) berarti login ulang. Pindah halaman lewat
+menu TIDAK memutus sesi, karena navigasi `st.Page` tidak memuat ulang browser.
+
+Kalau nanti sesi perlu tahan refresh, jalur yang benar adalah cookie HttpOnly
++ Secure + SameSite=Strict (butuh komponen cookie manager atau reverse proxy
+auth) — BUKAN mengembalikan id sesi ke URL.
 
 Kredensial dibaca dari environment variable `ADMIN_USERNAME`/`ADMIN_PASSWORD`.
-Untuk pengembangan lokal, salin `.env.example` jadi `.env` (sudah
-di-gitignore) dan isi nilainya — `load_dotenv()` di bawah memuatnya otomatis
-tanpa perlu export manual di shell. Kalau `.env`/env var tidak ada, dipakai
-nilai default dev supaya halaman tetap bisa dicoba.
+Di Streamlit Community Cloud, isi keduanya di Settings > Secrets sebagai kunci
+level atas (Streamlit mempromosikannya jadi environment variable sebelum skrip
+jalan). Untuk lokal, salin `.env.example` jadi `.env` (sudah di-gitignore).
+TIDAK ADA kredensial default: kalau belum disetel, login selalu gagal
+(`admin_dikonfigurasi()` False) supaya panel admin tidak pernah terbuka dengan
+kata sandi yang bisa ditebak. Halaman publik tetap jalan normal.
+
+Setiap login/logout dicatat ke `db.admin_login_logs` (audit ringan, tanpa
+identitas selain peran "admin") — yang masuk log cuma hash pendek id sesi
+(`_kode_audit`), bukan id sesinya.
 """
 
 from __future__ import annotations
@@ -39,74 +50,88 @@ from db import catat_aktivitas_admin
 
 load_dotenv(Path(__file__).parent / ".env")
 
-_ADMIN_USERNAME_DEFAULT = "admin"  # dev/demo — WAJIB diganti via ADMIN_USERNAME di produksi
-_ADMIN_PASSWORD_DEFAULT = "admin123"  # dev/demo — WAJIB diganti via ADMIN_PASSWORD di produksi
 _SESI_ID_KEY = "admin_sesi_id"
-_QP_SESI = "sid"  # nama query param pembawa id sesi di URL
-_SESI_BERAKHIR_KEY = "admin_sesi_berakhir"  # penanda untuk pesan "sesi habis" di halaman login
-_TIMEOUT_SESI = 15 * 60  # detik tanpa aktivitas sebelum sesi admin gugur
+_SESI_BERAKHIR_KEY = "admin_sesi_berakhir"  # penanda pesan "sesi habis" di halaman login
+_TIMEOUT_IDLE = 15 * 60  # detik tanpa aktivitas sebelum sesi gugur
+_TIMEOUT_ABSOLUT = 8 * 60 * 60  # umur maksimum sesi sejak login, walau terus aktif
+
+# Kompatibilitas nama lama (dipakai pesan di halaman login & test).
+_TIMEOUT_SESI = _TIMEOUT_IDLE
 
 
 def username_admin() -> str:
-    return os.environ.get("ADMIN_USERNAME", _ADMIN_USERNAME_DEFAULT)
+    """Username admin, atau string kosong kalau belum dikonfigurasi."""
+    return os.environ.get("ADMIN_USERNAME", "")
 
 
 def kata_sandi_admin() -> str:
-    return os.environ.get("ADMIN_PASSWORD", _ADMIN_PASSWORD_DEFAULT)
+    """Kata sandi admin, atau string kosong kalau belum dikonfigurasi."""
+    return os.environ.get("ADMIN_PASSWORD", "")
+
+
+def admin_dikonfigurasi() -> bool:
+    """Kredensial admin sudah disetel? Kalau False, `login()` selalu gagal.
+
+    Dipakai halaman login untuk menjelaskan kenapa form-nya tidak bisa
+    dipakai, alih-alih menampilkan "kata sandi salah" yang menyesatkan.
+    """
+    return bool(username_admin()) and bool(kata_sandi_admin())
 
 
 @st.cache_resource
-def _sesi_aktif() -> dict[str, float]:
-    """Daftar sesi admin yang hidup: `{id_sesi: epoch aktivitas terakhir}`.
+def _sesi_aktif() -> dict[str, tuple[float, float]]:
+    """Sesi admin yang hidup: `{id_sesi: (epoch dibuat, epoch aktivitas terakhir)}`.
 
-    `cache_resource` dipakai supaya satu dict ini dibagi semua koneksi
-    browser di proses server yang sama — itulah yang membuat sesi selamat
-    dari reload halaman, karena `st.session_state` dibuang Streamlit setiap
-    kali tab dimuat ulang.
+    `cache_resource` dipakai supaya satu dict ini dibagi semua koneksi browser
+    di proses server yang sama — itu yang membuat status login tetap berlaku
+    antar rerun dan antar halaman tanpa menitipkan apa pun ke URL.
     """
     return {}
 
 
-def _sesi_masih_hidup(sesi: dict[str, float], id_sesi: str, sekarang: float) -> bool:
-    """Sesi masih valid? Kalau ya, waktu aktivitas di-refresh (jendela
-    bergulir: 15 menit dihitung dari interaksi terakhir, bukan dari login).
-    Kalau sudah lewat timeout, sesi dibuang dari daftar."""
-    terakhir = sesi.get(id_sesi)
-    if terakhir is None or sekarang - terakhir > _TIMEOUT_SESI:
+def _sesi_masih_hidup(
+    sesi: dict[str, tuple[float, float]], id_sesi: str, sekarang: float
+) -> bool:
+    """Sesi masih valid? Kalau ya, waktu aktivitas di-refresh.
+
+    Dua batas yang dicek:
+    - idle bergulir: 15 menit dihitung dari interaksi TERAKHIR, bukan login;
+    - umur absolut: 8 jam sejak login, walau admin terus aktif — supaya sesi
+      yang bocor/terlupakan tidak bisa dipelihara hidup selamanya.
+
+    Sesi yang gugur dibuang dari daftar.
+    """
+    catatan = sesi.get(id_sesi)
+    if catatan is None:
+        return False
+    dibuat, terakhir = catatan
+    if sekarang - terakhir > _TIMEOUT_IDLE or sekarang - dibuat > _TIMEOUT_ABSOLUT:
         sesi.pop(id_sesi, None)
         return False
-    sesi[id_sesi] = sekarang
+    sesi[id_sesi] = (dibuat, sekarang)
     return True
 
 
 def admin_sudah_masuk() -> bool:
-    """Gerbang tunggal status admin — sekaligus memulihkan sesi setelah
-    reload (id sesi dibaca ulang dari query param) dan memperpanjang masa
-    aktifnya."""
-    id_sesi = st.session_state.get(_SESI_ID_KEY) or st.query_params.get(_QP_SESI)
+    """Gerbang tunggal status admin — sekaligus memperpanjang masa aktif sesi."""
+    id_sesi = st.session_state.get(_SESI_ID_KEY)
     if not id_sesi:
         return False
     if not _sesi_masih_hidup(_sesi_aktif(), id_sesi, time.time()):
-        _lupakan_sesi_lokal()
+        st.session_state.pop(_SESI_ID_KEY, None)
         st.session_state[_SESI_BERAKHIR_KEY] = True
         return False
-    st.session_state[_SESI_ID_KEY] = id_sesi
-    # Ditulis ulang tiap run: Streamlit mengosongkan query param setiap kali
-    # pindah halaman, jadi tanpa ini URL halaman admin lain kehilangan id
-    # sesi dan reload di sana balik ke form login.
-    st.query_params[_QP_SESI] = id_sesi
     return True
 
 
 def masuk_sebagai_admin() -> None:
-    # Token sesi penuh dari CSPRNG (±256 bit): id ini praktis jadi "kata
-    # sandi sementara" karena ikut di URL, jadi tidak boleh bisa diterka —
-    # pencarian di `_sesi_aktif()` tidak punya rate limit apa pun.
+    # Token sesi dari CSPRNG (±256 bit). Tidak ikut di URL, tapi tetap dibuat
+    # tak-terka: pencarian di `_sesi_aktif()` tidak punya rate limit apa pun.
     id_sesi = secrets.token_urlsafe(32)
-    _sesi_aktif()[id_sesi] = time.time()
+    sekarang = time.time()
+    _sesi_aktif()[id_sesi] = (sekarang, sekarang)
     st.session_state[_SESI_ID_KEY] = id_sesi
     st.session_state.pop(_SESI_BERAKHIR_KEY, None)
-    st.query_params[_QP_SESI] = id_sesi
 
 
 def sesi_berakhir_karena_idle() -> bool:
@@ -115,27 +140,21 @@ def sesi_berakhir_karena_idle() -> bool:
     return bool(st.session_state.pop(_SESI_BERAKHIR_KEY, False))
 
 
-def _lupakan_sesi_lokal() -> None:
-    st.session_state.pop(_SESI_ID_KEY, None)
-    if _QP_SESI in st.query_params:
-        del st.query_params[_QP_SESI]
-
-
 def _kode_audit(id_sesi: str) -> str:
     """Kode korelasi untuk log audit — hash pendek dari id sesi, BUKAN id
-    sesinya sendiri. Id sesi setara token akses (ikut di URL), jadi tidak
-    boleh ikut tersimpan di `admin_login_logs`: siapa pun yang bisa membaca
-    tabel log jangan sampai bisa membajak sesi admin yang masih hidup."""
+    sesinya sendiri. Id sesi setara token akses, jadi tidak boleh ikut
+    tersimpan di `admin_login_logs`: siapa pun yang bisa membaca tabel log
+    jangan sampai bisa membajak sesi admin yang masih hidup."""
     return hashlib.sha256(id_sesi.encode()).hexdigest()[:12]
 
 
 def sesi_admin_saat_ini() -> str:
-    """Penanda sesi admin (bukan identitas pengguna, bukan pula token
-    sesinya) — dipakai di log aktivitas, baik login/logout di sini maupun
-    perubahan data (harga, model aktif, ambang EWS) yang dicatat dari halaman
-    admin masing-masing, supaya semua aksi dalam satu sesi login bisa
-    dikorelasikan saat audit."""
-    id_sesi = st.session_state.get(_SESI_ID_KEY) or st.query_params.get(_QP_SESI)
+    """Penanda sesi admin (bukan identitas pengguna, bukan pula token sesinya)
+    — dipakai di log aktivitas, baik login/logout di sini maupun perubahan data
+    (harga, model aktif, ambang EWS) yang dicatat dari halaman admin
+    masing-masing, supaya semua aksi dalam satu sesi login bisa dikorelasikan
+    saat audit."""
+    id_sesi = st.session_state.get(_SESI_ID_KEY)
     return _kode_audit(id_sesi) if id_sesi else "tanpa-sesi"
 
 
@@ -144,10 +163,20 @@ def login(username: str, kata_sandi: str) -> bool:
 
     Aplikasi ini adalah Streamlit monolith tanpa server API terpisah (sesuai
     arsitektur PRD): "endpoint" di sini adalah fungsi Python yang dipanggil
-    langsung oleh halaman UI, bukan rute HTTP. Username & kata sandi berasal
-    dari konfigurasi (env var), bukan tabel akun terdaftar.
+    langsung oleh halaman UI, bukan rute HTTP.
+
+    Gagal tertutup (`False`) kalau kredensial belum dikonfigurasi — tidak ada
+    nilai default yang bisa ditebak. Perbandingan memakai
+    `secrets.compare_digest` supaya lama eksekusinya tidak bergantung pada
+    berapa karakter awal yang sudah benar.
     """
-    if username == username_admin() and kata_sandi == kata_sandi_admin():
+    if not admin_dikonfigurasi():
+        return False
+    # Kedua compare_digest selalu dijalankan (bukan `and` yang korslet) supaya
+    # username salah dan kata sandi salah tidak bisa dibedakan dari waktu.
+    nama_cocok = secrets.compare_digest(username, username_admin())
+    sandi_cocok = secrets.compare_digest(kata_sandi, kata_sandi_admin())
+    if nama_cocok and sandi_cocok:
         masuk_sebagai_admin()
         catat_aktivitas_admin("login", sesi_admin_saat_ini())
         return True
@@ -155,18 +184,17 @@ def login(username: str, kata_sandi: str) -> bool:
 
 
 def keluar_dari_admin() -> None:
-    id_sesi = st.session_state.get(_SESI_ID_KEY) or st.query_params.get(_QP_SESI)
+    id_sesi = st.session_state.get(_SESI_ID_KEY)
     if id_sesi and _sesi_aktif().pop(id_sesi, None) is not None:
         catat_aktivitas_admin("logout", _kode_audit(id_sesi))
-    _lupakan_sesi_lokal()
+    st.session_state.pop(_SESI_ID_KEY, None)
     st.session_state.pop(_SESI_BERAKHIR_KEY, None)
 
 
 def require_admin() -> None:
-    """Panggil di awal skrip halaman admin selain login (Pengaturan
-    Model, dst). Menghentikan render halaman kalau sesi admin belum aktif,
-    supaya rute admin tidak bisa dilihat isinya lewat akses URL langsung
-    tanpa login.
+    """Panggil di awal skrip halaman admin selain login (Pengaturan Model,
+    dst). Menghentikan render halaman kalau sesi admin belum aktif, supaya
+    rute admin tidak bisa dilihat isinya lewat akses URL langsung tanpa login.
     """
     if not admin_sudah_masuk():
         st.warning(
