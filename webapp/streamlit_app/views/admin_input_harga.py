@@ -2,7 +2,7 @@
 
 SATU inputan per kolom dataset: baris form diturunkan dari
 `data.mock_commodities.get_komoditas_list()`, yang isinya kolom harga
-`DATASET-BERAS.csv`. Jadi kalau dataset diganti dan notebook dijalankan
+`DATASET-BERAS-NEW.csv`. Jadi kalau dataset diganti dan notebook dijalankan
 ulang dengan kolom berbeda, form ini otomatis ikut — tidak ada daftar
 komoditas yang dihardcode di sini.
 

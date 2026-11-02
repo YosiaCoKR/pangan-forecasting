@@ -1,0 +1,23 @@
+# Dependensi untuk hosting di Streamlit Community Cloud.
+# Streamlit Cloud hanya membaca requirements.txt di ROOT repo, bukan di
+# webapp/streamlit_app/ — berkas ini yang dipakai saat deploy.
+#
+# Versi DI-PIN PERSIS ke versi yang dipakai melatih & menyimpan artefak di
+# webapp/research/final_lgbm/ dan final_xgb/ (training 28 Okt 2026).
+# Artefak itu pickle skforecast: kalau scikit-learn / lightgbm / xgboost /
+# numpy naik versi, load_forecaster() bisa gagal atau — lebih buruk — memuat
+# tapi memberi prediksi berbeda tanpa error. Jangan longgarkan pin ini tanpa
+# menjalankan ulang notebook dan menyimpan ulang artefaknya.
+
+streamlit==1.64.0
+pandas==2.3.3
+numpy==2.5.3
+plotly==7.1.0
+python-dotenv==1.2.3
+
+# Jalur pemuatan model — lihat catatan pin di atas.
+skforecast==0.25.0
+scikit-learn==1.9.1
+lightgbm==4.7.0
+xgboost==3.4.1
+joblib==1.6.0

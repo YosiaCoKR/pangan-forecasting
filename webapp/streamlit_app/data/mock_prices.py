@@ -1,6 +1,6 @@
 """Data harga historis — dasar dari dataset riset ASLI, edit admin persisten ke `.pkl`.
 
-Riwayat tiap komoditas dimuat dari `DATASET-BERAS.csv` (dataset yang juga
+Riwayat tiap komoditas dimuat dari `DATASET-BERAS-NEW.csv` (dataset yang juga
 dipakai melatih model — lihat `_muat_dataset_riset`). Harga yang disimpan
 admin lewat halaman Input Harga Terbaru ditulis ke `harga_historis.pkl` di
 sebelah modul ini dan dimuat balik saat aplikasi start, jadi tidak hilang
@@ -31,14 +31,14 @@ _cache_dataset_riset: pd.DataFrame | None = None
 
 
 def _muat_dataset_riset() -> pd.DataFrame:
-    """Muat & bersihkan `DATASET-BERAS.csv` sekali per proses (cached).
+    """Muat & bersihkan `DATASET-BERAS-NEW.csv` sekali per proses (cached).
 
     Pra-proses persis sama seperti notebook riset (`asfreq("D")` + interpolasi
     berbasis waktu) supaya konsisten dengan data yang dipakai melatih model.
     """
     global _cache_dataset_riset
     if _cache_dataset_riset is None:
-        df = pd.read_csv(forecast.RESEARCH_DIR / "DATASET-BERAS.csv")
+        df = pd.read_csv(forecast.DATASET_PATH)
         df.index = pd.DatetimeIndex(df["tanggal"], yearfirst=True)
         df = df.drop(columns=["tanggal"]).asfreq("D")
         _cache_dataset_riset = df.interpolate(method="time", limit_direction="forward")

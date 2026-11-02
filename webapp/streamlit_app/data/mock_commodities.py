@@ -1,4 +1,4 @@
-"""Daftar komoditas pangan — DITURUNKAN dari kolom `DATASET-BERAS.csv`.
+"""Daftar komoditas pangan — DITURUNKAN dari kolom `DATASET-BERAS-NEW.csv`.
 
 Bukan lagi daftar hardcode: nama komoditas = nama kolom dataset riset, persis
 sama dengan yang dipakai notebook sebagai bagian nama file artefak model
@@ -55,12 +55,12 @@ def _kategori_ikon(nama: str) -> tuple[str, str, str]:
 
 @lru_cache(maxsize=1)
 def nama_kolom_dataset() -> tuple[str, ...]:
-    """Nama kolom harga di `DATASET-BERAS.csv` (tanpa kolom `tanggal`).
+    """Nama kolom harga di `DATASET-BERAS-NEW.csv` (tanpa kolom `tanggal`).
 
     Cuma header yang dibaca (`nrows=0`), jadi murah dipanggil dari mana pun;
     hasilnya di-cache sekali per proses.
     """
-    kolom = pd.read_csv(forecast.RESEARCH_DIR / "DATASET-BERAS.csv", nrows=0).columns
+    kolom = pd.read_csv(forecast.DATASET_PATH, nrows=0).columns
     return tuple(k for k in kolom if k != "tanggal")
 
 

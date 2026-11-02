@@ -12,7 +12,7 @@ Aplikasi tidak melatih atau mengubah parameter model apa pun — hanya memilih
 artefak mana yang dimuat. Pilihan di sini dibaca `forecast.model_aktif(nama)`,
 jadi seluruh halaman publik (Dashboard, Detail Komoditas, EWS) langsung ikut.
 
-Daftar komoditas di tabel diturunkan dari kolom `DATASET-BERAS.csv` lewat
+Daftar komoditas di tabel diturunkan dari kolom `DATASET-BERAS-NEW.csv` lewat
 `data.mock_commodities` — dataset baru + notebook dijalankan ulang berarti
 baris tabel ini ikut berubah sendiri.
 """

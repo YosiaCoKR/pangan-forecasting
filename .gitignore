@@ -201,3 +201,8 @@ pnpm-debug.log*
 
 # Local build output
 webapp/frontend/dist/
+
+# Streamlit secrets — kredensial admin lokal. Di Streamlit Community Cloud
+# nilai ini diisi lewat dashboard (Settings > Secrets), bukan berkas ini.
+.streamlit/secrets.toml
+**/.streamlit/secrets.toml

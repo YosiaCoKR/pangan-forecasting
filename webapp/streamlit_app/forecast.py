@@ -21,7 +21,7 @@ jalur pemuatan, `window_size`, dan pembalikan skala-nya identik.
 
 `nama_komoditas` adalah nama tampilan komoditas (mis. "Beras Kualitas Bawah
 I") — persis sama dengan `Komoditas.nama` di `data.mock_commodities` dan
-nama kolom di `DATASET-BERAS.csv`, karena itu yang dipakai notebook riset
+nama kolom di `DATASET-BERAS-NEW.csv`, karena itu yang dipakai notebook riset
 sebagai bagian nama file artefak.
 
 `ramalkan_harga` di-cache lewat `st.cache_data`, di-kunci dari ISI
@@ -46,6 +46,12 @@ import streamlit as st
 from skforecast.utils import load_forecaster
 
 RESEARCH_DIR = Path(__file__).resolve().parent.parent / "research"
+
+# Dataset riset yang dipakai melatih artefak di `final_lgbm/`/`final_xgb/`
+# (lihat `code_run_all_new.ipynb`). Satu-satunya tempat nama berkasnya
+# ditulis: `data.mock_prices` & `data.mock_commodities` ikut dari sini, jadi
+# ganti dataset + latih ulang notebook cukup mengubah baris ini.
+DATASET_PATH = RESEARCH_DIR / "DATASET-BERAS-NEW.csv"
 
 HORIZON_TERSEDIA: tuple[int, ...] = (1, 7, 30)
 
@@ -106,7 +112,7 @@ def model_aktif(nama_komoditas: str | None = None) -> InfoModel:
     return MODEL_TERSEDIA.get(kunci, MODEL_TERSEDIA[MODEL_DEFAULT])
 
 # Model riset dilatih pada harga dalam RIBUAN rupiah (nilai `13.25` di
-# DATASET-BERAS.csv = Rp 13.250/kg). Semua konversi ke/dari Rupiah aktual di
+# DATASET-BERAS-NEW.csv = Rp 13.250/kg). Semua konversi ke/dari Rupiah aktual di
 # aplikasi web harus lewat konstanta ini.
 SKALA_HARGA = 1000
 
