@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from auth import admin_sudah_masuk, login, tombol_logout
+from auth import admin_sudah_masuk, login, sesi_berakhir_karena_idle, tombol_logout
 
 
 def _form_login() -> None:
@@ -26,6 +26,11 @@ def _form_login() -> None:
 
     _, kolom_tengah, _ = st.columns([1, 1.4, 1])
     with kolom_tengah:
+        if sesi_berakhir_karena_idle():
+            st.info(
+                "Sesi admin sudah berakhir — otomatis keluar setelah 15 menit "
+                "tanpa aktivitas. Silakan masuk lagi."
+            )
         with st.container(border=True):
             with st.form("form-login-admin"):
                 username = st.text_input("Username admin")
