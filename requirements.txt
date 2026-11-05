@@ -15,6 +15,12 @@ numpy==2.5.3
 plotly==7.1.0
 python-dotenv==1.2.3
 
+# Dipakai `mock_prices.sinkronkan_ke_github()` untuk meng-commit
+# harga_historis.pkl lewat GitHub Contents API. Sebenarnya sudah terpasang
+# sebagai dependensi streamlit, tapi ditulis eksplisit supaya tidak hilang
+# diam-diam kalau streamlit kelak melepasnya.
+requests==2.34.2
+
 # Jalur pemuatan model — lihat catatan pin di atas.
 skforecast==0.25.0
 scikit-learn==1.9.1

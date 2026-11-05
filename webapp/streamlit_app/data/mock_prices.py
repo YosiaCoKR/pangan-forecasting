@@ -3,8 +3,13 @@
 Riwayat tiap komoditas dimuat dari `DATASET-BERAS-NEW.csv` (dataset yang juga
 dipakai melatih model — lihat `_muat_dataset_riset`). Harga yang disimpan
 admin lewat halaman Input Harga Terbaru ditulis ke `harga_historis.pkl` di
-sebelah modul ini dan dimuat balik saat aplikasi start, jadi tidak hilang
-begitu proses berhenti.
+sebelah modul ini dan dimuat balik saat aplikasi start.
+
+Di HOSTING itu belum cukup: filesystem Streamlit Community Cloud ephemeral,
+`.pkl` lokal terhapus tiap container restart/redeploy. Karena itu
+`sinkronkan_ke_github()` meng-commit berkas yang sama ke repo, supaya harga
+ikut ter-clone saat container baru dibuat. Tidak ada jalur "fetch": clone
+repo-nya sendiri yang membawa berkas itu masuk.
 
 Kolom dataset adalah satu-satunya sumber daftar komoditas (lihat
 `data.mock_commodities`) — ganti dataset + jalankan ulang notebook, dan
@@ -13,6 +18,7 @@ riwayat, kartu dashboard, serta form input harga ikut berubah sendiri.
 
 from __future__ import annotations
 
+import base64
 import pickle
 from dataclasses import dataclass
 from datetime import datetime
@@ -20,11 +26,19 @@ from pathlib import Path
 
 import forecast
 import pandas as pd
+import requests
+import streamlit as st
 
 from data.mock_commodities import Komoditas, get_komoditas_by_slug, get_komoditas_list
 
 RENTANG_HARI_MAKS = 90
 _PKL_PATH = Path(__file__).parent / "harga_historis.pkl"
+
+# Posisi `.pkl` RELATIF terhadap akar repo — itu yang dipakai GitHub Contents
+# API sebagai path berkas. Diturunkan, bukan dihardcode, supaya tetap benar
+# kalau folder app dipindah.
+_PKL_REPO_PATH = _PKL_PATH.resolve().relative_to(Path(__file__).resolve().parents[3]).as_posix()
+_TIMEOUT_API = 10
 
 _cache_riwayat: dict[str, pd.DataFrame] = {}
 _cache_dataset_riset: pd.DataFrame | None = None
@@ -77,6 +91,96 @@ def _simpan_riwayat_ke_pkl() -> None:
     with open(sementara, "wb") as berkas:
         pickle.dump(_cache_riwayat, berkas)
     sementara.replace(_PKL_PATH)
+
+
+def _konfigurasi_github() -> dict[str, str] | None:
+    """Kredensial sinkronisasi dari `st.secrets`, atau None kalau belum diisi.
+
+    Bentuk yang dibaca (`.streamlit/secrets.toml` lokal, atau Secrets di
+    Streamlit Cloud) — token TIDAK pernah dicatat/ditampilkan di mana pun:
+
+        [github]
+        token = "github_pat_..."              # scope: Contents read+write
+        repo = "NamaAkun/pangan-forecasting"
+        branch = "main"                       # opsional
+    """
+    try:
+        bagian = st.secrets.get("github")
+    except Exception:
+        # Tidak ada secrets.toml sama sekali (mis. jalan lokal / test).
+        return None
+    if not bagian or not bagian.get("token") or not bagian.get("repo"):
+        return None
+    return {
+        "token": str(bagian["token"]),
+        "repo": str(bagian["repo"]),
+        "branch": str(bagian.get("branch", "main")),
+    }
+
+
+def sinkronkan_ke_github() -> str | None:
+    """Commit `harga_historis.pkl` ke repo lewat GitHub Contents API.
+
+    ALASAN: filesystem Streamlit Community Cloud ephemeral — `.pkl` lokal
+    hilang tiap container restart atau redeploy, jadi input harga admin
+    lenyap tanpa pesan. Dengan meng-commit berkas itu ke repo, harga ikut
+    TER-CLONE saat container baru dibuat; tidak perlu kode "fetch" sama
+    sekali, karena clone-nya sendiri sudah membawa berkasnya.
+
+    Mengembalikan `None` kalau sukses ATAU kalau fitur belum dikonfigurasi,
+    dan string alasan kalau GAGAL. Pemanggil WAJIB menampilkan alasan itu ke
+    admin: tulis lokal sudah sukses, jadi tanpa pesan admin akan mengira
+    harganya aman padahal salinan tahan-restart-nya tidak jadi.
+
+    Efek samping yang harus diberitahukan ke admin: commit ini memicu
+    redeploy Streamlit Cloud, jadi app akan restart beberapa saat setelahnya.
+    """
+    konfigurasi = _konfigurasi_github()
+    if konfigurasi is None:
+        return None
+
+    url = f"https://api.github.com/repos/{konfigurasi['repo']}/contents/{_PKL_REPO_PATH}"
+    kepala = {
+        "Authorization": f"Bearer {konfigurasi['token']}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    try:
+        isi = _PKL_PATH.read_bytes()
+    except OSError as exc:
+        return f"tidak bisa membaca {_PKL_PATH.name}: {exc}"
+
+    try:
+        # GitHub butuh `sha` blob LAMA untuk menimpa berkas yang sudah ada;
+        # 404 berarti berkasnya belum pernah ada, jadi `sha` dikosongkan.
+        cek = requests.get(
+            url, headers=kepala, params={"ref": konfigurasi["branch"]}, timeout=_TIMEOUT_API
+        )
+        if cek.status_code == 200:
+            sha_lama = cek.json().get("sha")
+        elif cek.status_code == 404:
+            sha_lama = None
+        else:
+            return f"gagal membaca berkas di repo (HTTP {cek.status_code})"
+
+        muatan = {
+            "message": f"data(harga): sinkronisasi input admin {datetime.now():%Y-%m-%d %H:%M}",
+            "content": base64.b64encode(isi).decode("ascii"),
+            "branch": konfigurasi["branch"],
+        }
+        if sha_lama:
+            muatan["sha"] = sha_lama
+
+        kirim = requests.put(url, headers=kepala, json=muatan, timeout=_TIMEOUT_API)
+        if kirim.status_code not in (200, 201):
+            # Pesan GitHub aman ditampilkan (tidak memuat token), tapi
+            # dipotong supaya body panjang tidak membanjiri UI admin.
+            return f"commit ditolak (HTTP {kirim.status_code}): {kirim.text[:200]}"
+    except requests.RequestException as exc:
+        return f"tidak bisa menghubungi GitHub: {exc}"
+
+    return None
 
 
 _muat_riwayat_dari_pkl()

@@ -11,6 +11,7 @@ pandas==2.3.3
 numpy==2.5.3
 plotly==7.1.0
 python-dotenv==1.2.3
+requests==2.34.2
 
 # Jalur pemuatan model — lihat catatan pin di atas.
 skforecast==0.25.0

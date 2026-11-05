@@ -9,7 +9,9 @@ komoditas yang dihardcode di sini.
 Admin memilih satu tanggal, lalu mengisi harga komoditas mana saja (kolom
 yang dibiarkan kosong tidak diubah). Hasilnya ditulis ke
 `data/harga_historis.pkl` lewat `mock_prices.simpan_harga_batch` — satu
-operasi tulis untuk seluruh form — dan langsung dipakai halaman publik:
+operasi tulis untuk seluruh form — lalu disalin ke repo lewat
+`mock_prices.sinkronkan_ke_github()` supaya tidak hilang saat container
+hosting restart, dan langsung dipakai halaman publik:
 cache prediksi dikunci dari ISI riwayat, jadi riwayat yang berubah otomatis
 memicu perhitungan ulang tanpa invalidasi manual.
 """
@@ -21,7 +23,7 @@ from datetime import date
 import streamlit as st
 from auth import require_admin, sesi_admin_saat_ini, tombol_logout
 from data.mock_commodities import get_komoditas_list
-from data.mock_prices import harga_terakhir, simpan_harga_batch
+from data.mock_prices import harga_terakhir, simpan_harga_batch, sinkronkan_ke_github
 from db import catat_aktivitas_admin
 from formatting import format_rupiah
 
@@ -107,6 +109,24 @@ if simpan:
                 f"{tersimpan} harga disimpan untuk {tanggal_terpilih.strftime('%d %b %Y')}. "
                 "Halaman publik memakai data terbaru ini pada permintaan berikutnya."
             )
+
+            # Tulis lokal SUDAH sukses di atas. Sinkronisasi repo adalah
+            # lapisan tahan-restart untuk hosting (lihat docstring
+            # `sinkronkan_ke_github`) — kalau gagal, admin HARUS diberi tahu,
+            # bukan dibiarkan mengira harganya sudah aman permanen.
+            galat_sinkron = sinkronkan_ke_github()
+            if galat_sinkron:
+                st.warning(
+                    "Harga tersimpan di server ini, TAPI gagal disalin ke repo "
+                    f"({galat_sinkron}). Salinan itu yang membuat harga bertahan "
+                    "saat hosting restart — tanpa itu, input ini bisa hilang. "
+                    "Periksa secrets `github` lalu simpan ulang."
+                )
+            else:
+                st.caption(
+                    "Disalin juga ke repo supaya tidak hilang saat hosting restart. "
+                    "Commit ini memicu redeploy, jadi app bisa restart sebentar."
+                )
             with st.expander("Lihat yang baru disimpan"):
                 for slug, harga in harga_valid.items():
                     st.markdown(
