@@ -23,7 +23,12 @@ from datetime import date
 import streamlit as st
 from auth import require_admin, sesi_admin_saat_ini, tombol_logout
 from data.mock_commodities import get_komoditas_list
-from data.mock_prices import harga_terakhir, simpan_harga_batch, sinkronkan_ke_github
+from data.mock_prices import (
+    harga_terakhir,
+    simpan_harga_batch,
+    sinkronisasi_aktif,
+    sinkronkan_ke_github,
+)
 from db import catat_aktivitas_admin
 from formatting import format_rupiah
 
@@ -122,10 +127,16 @@ if simpan:
                     "saat hosting restart — tanpa itu, input ini bisa hilang. "
                     "Periksa secrets `github` lalu simpan ulang."
                 )
-            else:
+            elif sinkronisasi_aktif():
                 st.caption(
                     "Disalin juga ke repo supaya tidak hilang saat hosting restart. "
                     "Commit ini memicu redeploy, jadi app bisa restart sebentar."
+                )
+            else:
+                st.warning(
+                    "Harga tersimpan, TAPI hanya di server ini — salinan tahan-restart "
+                    "belum aktif karena secrets `github` belum diisi. Filesystem hosting "
+                    "bersifat sementara, jadi harga ini akan hilang saat app restart."
                 )
             with st.expander("Lihat yang baru disimpan"):
                 for slug, harga in harga_valid.items():

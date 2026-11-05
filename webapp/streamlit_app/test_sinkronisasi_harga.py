@@ -114,4 +114,15 @@ assert isinstance(galat, str) and "GitHub" in galat, f"galat jaringan harus dita
 assert TOKEN not in galat, "TOKEN BOCOR ke pesan galat jaringan"
 print("ok kegagalan dilaporkan tanpa membocorkan token")
 
+# --- 5. BUG yang ditemukan blackbox test: "belum dikonfigurasi" TIDAK boleh
+# terbaca sama dengan "berhasil tersalin". Keduanya mengembalikan None, jadi
+# pembedanya wajib `sinkronisasi_aktif()`. ---
+_pakai_secrets(None)
+assert mock_prices.sinkronisasi_aktif() is False, "tanpa secrets harus dilaporkan TIDAK aktif"
+_pakai_secrets({"token": TOKEN, "repo": "akun/repo"})
+assert mock_prices.sinkronisasi_aktif() is True, "dengan secrets lengkap harus aktif"
+_pakai_secrets({"token": TOKEN})
+assert mock_prices.sinkronisasi_aktif() is False, "secrets separuh harus dianggap TIDAK aktif"
+print("ok pembeda aktif/tidak-aktif")
+
 print("SEMUA OK")

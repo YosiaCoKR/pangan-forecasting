@@ -118,6 +118,18 @@ def _konfigurasi_github() -> dict[str, str] | None:
     }
 
 
+def sinkronisasi_aktif() -> bool:
+    """Secrets `github` sudah diisi?
+
+    Dipakai halaman admin untuk membedakan "benar-benar tersalin ke repo"
+    dari "fitur belum dinyalakan" — DUA-DUANYA membuat
+    `sinkronkan_ke_github()` mengembalikan None, dan tanpa pembeda ini
+    admin diberi tahu harganya aman permanen padahal tidak ada apa pun
+    yang tersalin.
+    """
+    return _konfigurasi_github() is not None
+
+
 def sinkronkan_ke_github() -> str | None:
     """Commit `harga_historis.pkl` ke repo lewat GitHub Contents API.
 
