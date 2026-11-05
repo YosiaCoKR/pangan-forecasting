@@ -67,10 +67,13 @@ def panel_prediksi(
         width="stretch",
         disabled=label_rentang is None,
     ):
+        # TANPA st.rerun(): klik tombol SUDAH memicu satu rerun, dan
+        # `rentang_terpilih` di bawah membaca session_state pada run yang sama.
+        # st.rerun() di sini cuma menjalankan ulang seluruh halaman untuk
+        # kedua kalinya — di dashboard itu berarti 9 kartu digambar 2x.
         st.session_state[f"prediksi-aktif-{key_prefix}"] = RENTANG_PREDIKSI[
             label_rentang
         ]
-        st.rerun()
 
     rentang_terpilih = st.session_state.get(f"prediksi-aktif-{key_prefix}")
     hasil = (

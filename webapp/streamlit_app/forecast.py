@@ -36,6 +36,7 @@ mengembalikan prediksi model lama dari cache.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -126,11 +127,18 @@ class ModelRisetError(RuntimeError):
     """Artefak model riset tidak ada, gagal dimuat, basi, atau riwayat kurang."""
 
 
-_cache_forecaster: dict[tuple[str, str, int], Any] = {}
-
-
+# ponytail: LRU dibatasi 12 artefak, menggantikan dict tanpa batas.
+# Angka terukur (VmRSS, 5 Nov 2026): baseline impor 226 MB; 12 artefak
+# ter-cache 307 MB; setelah menjelajahi SEMUA 54 artefak 509 MB (vs 566 MB
+# tanpa batas, malloc_trim cuma mengembalikan 16 MB).
+# Jadi batas ini mengunci jumlah objek hidup, TAPI tidak mengembalikan RSS:
+# glibc menahan arena yang sudah dibebaskan. Plafon proses yang jalan lama
+# tetap ~500 MB, cuma turun ~57 MB. Kalau hosting benar-benar kena OOM,
+# yang harus diperkecil adalah artefaknya sendiri (h30 = 30 regressor per
+# komoditas, 4-7 MB/berkas), bukan maxsize di sini.
+@lru_cache(maxsize=12)
 def muat_forecaster(nama_komoditas: str, horizon: int, kunci_model: str) -> Any:
-    """`ForecasterDirect` satu model x komoditas x horizon (cached per proses)."""
+    """`ForecasterDirect` satu model x komoditas x horizon (LRU per proses)."""
     if horizon not in HORIZON_TERSEDIA:
         raise ValueError(
             f"Horizon {horizon} tidak didukung, pilih salah satu dari {HORIZON_TERSEDIA}."
@@ -141,29 +149,26 @@ def muat_forecaster(nama_komoditas: str, horizon: int, kunci_model: str) -> Any:
         )
 
     info = MODEL_TERSEDIA[kunci_model]
-    kunci = (kunci_model, nama_komoditas, horizon)
-    if kunci not in _cache_forecaster:
-        path = info.path_artefak(nama_komoditas, horizon)
-        if not path.exists():
-            raise ModelRisetError(
-                f"Forecaster {info.nama} tidak ditemukan untuk "
-                f"'{nama_komoditas}' h={horizon} ({path})."
-            )
-        try:
-            forecaster = load_forecaster(str(path), verbose=False, suppress_warnings=True)
-        except Exception as exc:
-            raise ModelRisetError(f"Gagal memuat forecaster dari {path}: {exc}") from exc
+    path = info.path_artefak(nama_komoditas, horizon)
+    if not path.exists():
+        raise ModelRisetError(
+            f"Forecaster {info.nama} tidak ditemukan untuk "
+            f"'{nama_komoditas}' h={horizon} ({path})."
+        )
+    try:
+        forecaster = load_forecaster(str(path), verbose=False, suppress_warnings=True)
+    except Exception as exc:
+        raise ModelRisetError(f"Gagal memuat forecaster dari {path}: {exc}") from exc
 
-        # ponytail: cek heuristik skala data latih, bukan versi artefak. Kalau
-        # notebook kelak menyimpan metadata pipeline, cek metadata itu saja.
-        if float(forecaster.last_window_.iloc[-1, 0]) < _BATAS_BAWAH_LOG:
-            raise ModelRisetError(
-                f"Forecaster {info.nama} '{nama_komoditas}' h={horizon} masih artefak lama "
-                f"(bukan skala log1p) — jalankan ulang code_run_all.ipynb untuk "
-                f"menyimpan ulang {info.folder}/."
-            )
-        _cache_forecaster[kunci] = forecaster
-    return _cache_forecaster[kunci]
+    # ponytail: cek heuristik skala data latih, bukan versi artefak. Kalau
+    # notebook kelak menyimpan metadata pipeline, cek metadata itu saja.
+    if float(forecaster.last_window_.iloc[-1, 0]) < _BATAS_BAWAH_LOG:
+        raise ModelRisetError(
+            f"Forecaster {info.nama} '{nama_komoditas}' h={horizon} masih artefak lama "
+            f"(bukan skala log1p) — jalankan ulang code_run_all.ipynb untuk "
+            f"menyimpan ulang {info.folder}/."
+        )
+    return forecaster
 
 
 def susun_last_window(riwayat: pd.DataFrame, window_size: int) -> pd.Series:
