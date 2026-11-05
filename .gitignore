@@ -69,8 +69,17 @@ webapp/streamlit_app/tracking.db-journal
 webapp/streamlit_app/config.json
 webapp/streamlit_app/config.json.tmp
 
-# Hasil input harga admin (persisten via task backend) — data runtime, bukan kode
-webapp/streamlit_app/data/harga_historis.pkl
+# Hasil input harga admin SENGAJA di-track: filesystem Streamlit Cloud
+# ephemeral, jadi satu-satunya cara harga ikut hidup di container baru adalah
+# ter-clone bersama repo. Ditulis oleh `mock_prices.sinkronkan_ke_github()`.
+# webapp/streamlit_app/data/harga_historis.pkl  <- jangan diignore
+webapp/streamlit_app/data/harga_historis.pkl.tmp
+
+# Artefak tuning (tuned_lgbm/, tuned_xgb/): dipakai notebook riset, TIDAK
+# pernah dibaca aplikasi web (app cuma memuat final_lgbm/ & final_xgb/).
+# 75 MB ini dulu ikut di-clone tiap container boot di hosting.
+webapp/research/tuned_lgbm/
+webapp/research/tuned_xgb/
 
 # Flask stuff:
 instance/
