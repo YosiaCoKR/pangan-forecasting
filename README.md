@@ -1,134 +1,79 @@
 # Prediksi Pangan Jogja
 
-Aplikasi skripsi untuk memantau dan memprediksi harga 9 komoditas pangan di Provinsi DIY (6 jenis beras, bawang merah, cabai rawit hijau, cabai rawit merah). Prediksi 1, 7, dan 30 hari dibuat oleh model **LightGBM** yang kombinasi hyperparameter-nya **dicari secara otomatis**, dilatih di notebook riset lalu dimuat oleh aplikasi Streamlit tanpa pelatihan ulang.
+![Python](https://img.shields.io/badge/python-3-blue) ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3.0-blue) ![LightGBM](https://img.shields.io/badge/LightGBM-3.3.5-blue) ![XGBoost](https://img.shields.io/badge/XGBoost-1.7.6-blue) ![Streamlit](https://img.shields.io/badge/Streamlit-1.30.0-blue) ![Pandas](https://img.shields.io/badge/Pandas-2.0.3-blue) ![Plotly](https://img.shields.io/badge/Plotly-5.15.0-blue)
 
-## Fitur
+Aplikasi Streamlit untuk memantau harga dan membuat prediksi H+1, H+7, dan H+30 bagi sembilan komoditas pangan di Daerah Istimewa Yogyakarta. Model LightGBM dilatih menggunakan data historis, lalu dipakai aplikasi untuk menampilkan prediksi dan peringatan dini perubahan harga.
 
-### Publik
+## ✨ Features
 
-- **Dashboard**: harga terkini 9 komoditas per kategori, tren dibanding kemarin, dan ringkasan jumlah komoditas yang naik, turun, atau tetap. Prediksi 1/7/30 hari bisa langsung dihitung dari kartu tiap komoditas.
-- **Detail komoditas**: grafik harga 90 hari plus lintasan prediksi harian sampai H+1, H+7, atau H+30.
-- **Data historis**: tren harga 30/60/90 hari ke belakang.
-- **Peringatan dini (EWS)**: banner dan pop-up bila prediksi H+30 melewati ambang komoditas tersebut (default kenaikan ≥ 10%, atau harga tetap yang diatur admin).
-- Tampilan mengikuti mode terang/gelap perangkat pengguna, termasuk grafik.
+- Dashboard harga terkini dan perubahan harga harian untuk sembilan komoditas.
+- Grafik harga historis dan lintasan prediksi sampai 30 hari.
+- Peringatan dini berdasarkan ambang kenaikan harga yang dapat diatur admin.
+- Halaman admin untuk memasukkan harga, mengatur ambang, dan melihat audit log.
+- Prediksi menggunakan forecaster yang telah dilatih, tanpa pelatihan ulang saat aplikasi berjalan.
 
-### Admin
+## 🛠️ Tech Stack
 
-- Login dengan username dan kata sandi dari environment variable (tanpa tabel akun).
-- Pengaturan ambang EWS per komoditas (persen kenaikan atau harga tetap).
-- Pengaturan model aktif. **Catatan:** daftar model di halaman ini masih data tiruan (`data/mock_models.py`); prediksi selalu memakai model di `webapp/research/final_lgbm/`.
-- Audit log: login/logout dan setiap perubahan data admin dicatat ke SQLite (`tracking.db`).
+Python, Streamlit, Pandas, Plotly, scikit-learn, skforecast, LightGBM, XGBoost, SQLite
 
-## Struktur repository
+## 🚀 Getting Started
 
-```text
-pangan-forecasting/
-├── README.md
-├── venv/                              # virtual environment lokal (tidak di-commit)
-└── webapp/
-    ├── research/
-    │   ├── code_run_all.ipynb         # pipeline lengkap: EDA, tuning, evaluasi, simpan model
-    │   ├── code_run_training.ipynb    # latih ulang dari params/ yang sudah ada (tanpa tuning)
-    │   ├── DATASET-BERAS.csv          # harga harian 9 komoditas (ribuan rupiah)
-    │   ├── requirements.txt           # dependency notebook
-    │   ├── tuned_lgbm/                # forecaster LightGBM hasil tuning (27 .joblib)
-    │   ├── tuned_xgb/                 # forecaster XGBoost hasil tuning (27 .joblib)
-    │   ├── final_lgbm/                # 27 model final LightGBM yang DIMUAT APLIKASI
-    │   ├── final_xgb/                 # 27 model final XGBoost yang DIMUAT APLIKASI
-    │   └── params/                    # hyperparameter hasil tuning (+ artefak MSTL lama, tidak dipakai lagi)
-    └── streamlit_app/
-        ├── app.py                     # entry point & navigasi
-        ├── forecast.py                # muat model final + hitung prediksi
-        ├── ews.py                     # deteksi peringatan dini H+30
-        ├── komponen_prediksi.py       # panel prediksi bersama (dashboard/detail/historis)
-        ├── charting.py                # grafik harga Plotly (ikut tema terang/gelap)
-        ├── auth.py                    # login admin & proteksi halaman
-        ├── config.py                  # model aktif & ambang EWS (config.json)
-        ├── db.py                      # audit log (SQLite)
-        ├── formatting.py              # format rupiah, waktu, status tren
-        ├── test_forecast.py           # cek cepat transformasi input model
-        ├── requirements.txt
-        ├── .env.example               # contoh kredensial admin
-        ├── .streamlit/config.toml     # tema terang & gelap, font
-        ├── assets/styles.css          # gaya kustom (token warna ikut tema)
-        ├── data/
-        │   ├── mock_commodities.py    # daftar 9 komoditas (nama, slug, unit, ikon)
-        │   ├── mock_prices.py         # riwayat harga dari DATASET-BERAS.csv + input admin
-        │   └── mock_models.py         # daftar model tiruan untuk halaman admin
-        └── views/
-            ├── dashboard.py
-            ├── detail_komoditas.py
-            ├── historis.py
-            ├── perbandingan_prediksi.py
-            ├── admin_login.py
-            ├── admin_input_harga.py
-            ├── admin_model_settings.py
-            ├── admin_ambang_settings.py
-            └── admin_audit_log.py
-```
+### Prerequisites
 
-Meski namanya `mock_prices.py`, riwayat harga di aplikasi berasal dari dataset riset asli (`DATASET-BERAS.csv`), bukan data acak.
+- Python 3
 
-## Pipeline model
-
-Satu model per komoditas × horizon, total **27 model** (9 komoditas × 3 horizon).
-
-1. Harga harian (dalam ribuan rupiah) dirapikan: `asfreq("D")` lalu celah diisi dengan interpolasi berbasis waktu.
-2. Target diubah ke skala log: `log1p(harga)`.
-3. `skforecast.ForecasterDirect` dengan `differentiation=1`. Model mempelajari perubahan harian log harga. Fitur: lag 1/7/30, rolling mean/std/min/max 7 dan 30 hari, serta fitur kalender siklikal.
-4. Kombinasi hyperparameter LightGBM dicari secara otomatis (`pygad`).
-5. Prediksi dikembalikan ke rupiah: `expm1(prediksi) × 1000`.
-
-Di aplikasi, `forecast.py` mengulang langkah 1, 2, dan 5 pada 90 hari harga terakhir, lalu memanggil model di `final_lgbm/` atau `final_xgb/` sesuai pilihan admin. Tidak ada pelatihan ulang. Hasilnya di-cache per isi riwayat, sehingga otomatis dihitung ulang saat admin memasukkan harga baru.
-
-## Persiapan
-
-Butuh Python 3 dan Streamlit **≥ 1.53** (tema terang/gelap terpisah dan `icon_position` di tombol).
+### Installation
 
 ```bash
-python -m venv venv
-source venv/bin/activate            # fish: source venv/bin/activate.fish
-pip install -r webapp/streamlit_app/requirements.txt
+git clone https://github.com/YosiaCoKR/pangan-forecasting.git
+cd pangan-forecasting
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Kredensial admin: salin `.env.example` menjadi `.env` di `webapp/streamlit_app/`, lalu isi `ADMIN_USERNAME` dan `ADMIN_PASSWORD`. Tanpa `.env`, aplikasi memakai nilai demo `admin` / `admin123`. **Ganti untuk produksi.**
+Untuk mengatur akun admin, salin `webapp/streamlit_app/.env.example` menjadi `webapp/streamlit_app/.env`, lalu isi `ADMIN_USERNAME` dan `ADMIN_PASSWORD`.
 
-## Menjalankan aplikasi
+### Usage
 
 ```bash
 cd webapp/streamlit_app
 streamlit run app.py
 ```
 
-Buka URL yang ditampilkan Streamlit (biasanya `http://localhost:8501`). Halaman admin ada di menu **Admin → Panel Admin**.
-
-Cek cepat transformasi input model:
+Untuk menjalankan tes aplikasi:
 
 ```bash
-cd webapp/streamlit_app
-python test_forecast.py              # mencetak "ok"
+python test_forecast.py
 ```
 
-## Melatih ulang model
+## 📁 Project Structure
 
-```bash
-pip install -r webapp/research/requirements.txt
-cd webapp/research
-jupyter notebook code_run_all.ipynb
+```text
+pangan-forecasting/
+├── README.md
+├── requirements.txt
+└── webapp/
+    ├── research/
+    │   ├── DATASET-BERAS-NEW.csv
+    │   ├── code_run_all_new.ipynb
+    │   ├── code_run_training.ipynb
+    │   ├── final_lgbm/
+    │   ├── final_xgb/
+    │   └── params/
+    └── streamlit_app/
+        ├── app.py
+        ├── forecast.py
+        ├── ews.py
+        ├── db.py
+        ├── config.py
+        ├── requirements.txt
+        ├── data/
+        └── views/
 ```
 
-Pilih **Kernel → Restart Kernel and Run All Cells**, jangan menjalankan sel satu per satu. Sel penyimpanan (bagian 34) menyimpan isi variabel `forecasters_tuned_lgbm` yang ada di memori kernel. Kalau sel pencarian hyperparameter (bagian 21 sampai 24) tidak ikut dijalankan, yang tersimpan adalah model dari sesi sebelumnya. Proses GA untuk 27 model memakan waktu cukup lama.
+## 📊 Results (khusus project ML)
 
-Setelah selesai, pastikan file di `final_lgbm/` bertanggal hari ini, lalu restart Streamlit:
+Evaluasi memakai split kronologis terakhir dari `TimeSeriesSplit(n_splits=5)` pada `DATASET-BERAS-NEW.csv`. Skor menggabungkan 342 prediksi uji dari sembilan komoditas dan horizon H+1, H+7, serta H+30. MAE dan RMSE menggunakan satuan ribu rupiah.
 
-```bash
-ls -la webapp/research/final_lgbm | head
-```
-
-### Pengaman artefak lama
-
-`forecast.py` menolak model yang data latihnya tidak berada di skala `log1p` harga, misalnya model lama yang dilatih pada residual MSTL. Komoditas dengan model seperti itu menampilkan **"Prediksi belum tersedia"**, bukan angka yang salah. Kalau kartu suatu komoditas terus menampilkan pesan ini, latih ulang model dengan langkah di atas.
-
-## Teknologi
-
-Python, Streamlit, Pandas, Plotly, skforecast, LightGBM, pygad, scikit-learn, SQLite, python-dotenv, Jupyter Notebook.
+made with ❤️ by [YosiaCoKR](https://github.com/YosiaCoKR)
