@@ -50,6 +50,12 @@ def main() -> None:
         url_path="detail-komoditas",
         visibility="hidden",
     )
+    performa_model_page = st.Page(
+        "views/performa_model.py",
+        title="Performa Model",
+        icon=":material/analytics:",
+        url_path="performa-model",
+    )
     admin_login_page = st.Page(
         "views/admin_login.py",
         title="Panel Admin",
@@ -92,6 +98,7 @@ def main() -> None:
                 dashboard_page,
                 historis_page,
                 detail_komoditas_page,
+                performa_model_page,
             ],
             "Admin": [
                 admin_login_page,

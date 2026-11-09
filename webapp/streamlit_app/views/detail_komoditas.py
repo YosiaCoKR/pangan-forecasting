@@ -162,6 +162,11 @@ def tampilkan_detail(slug: str) -> None:
         st.markdown("#### Grafik Harga")
         _gambar_chart(riwayat, komoditas.unit, rentang_terpilih, hasil, peringatan_aktif)
 
+    # `komoditas_dipilih` masih berisi slug halaman ini, jadi halaman Performa
+    # Model langsung membuka komoditas yang sama tanpa perlu dipilih ulang.
+    if st.button("📊 Lihat performa model prediksi", width="stretch"):
+        st.switch_page("views/performa_model.py")
+
 
 _slug_terpilih = st.session_state.get("komoditas_dipilih")
 if _slug_terpilih:

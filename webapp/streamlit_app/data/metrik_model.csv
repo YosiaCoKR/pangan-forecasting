@@ -1,0 +1,28 @@
+komoditas,horizon,observasi,mae_lightgbm,rmse_lightgbm,mape_lightgbm,mae_xgboost,rmse_xgboost,mape_xgboost,model_terbaik
+Beras Kualitas Bawah I,1,252,0.0027,0.0206,0.0201,0.0024,0.0204,0.0179,XGBoost
+Beras Kualitas Bawah I,7,252,0.0077,0.0341,0.0568,0.0079,0.0349,0.0580,LightGBM
+Beras Kualitas Bawah I,30,252,0.0230,0.0706,0.1695,0.0234,0.0703,0.1725,LightGBM
+Beras Kualitas Bawah II,1,252,0.0012,0.0116,0.0101,0.0010,0.0114,0.0083,XGBoost
+Beras Kualitas Bawah II,7,252,0.0050,0.0254,0.0402,0.0051,0.0254,0.0411,LightGBM
+Beras Kualitas Bawah II,30,252,0.0139,0.0445,0.1122,0.0143,0.0444,0.1152,LightGBM
+Beras Kualitas Medium I,1,252,0.0022,0.0160,0.0147,0.0020,0.0161,0.0134,XGBoost
+Beras Kualitas Medium I,7,252,0.0070,0.0301,0.0462,0.0072,0.0300,0.0469,LightGBM
+Beras Kualitas Medium I,30,252,0.0232,0.0610,0.1521,0.0238,0.0606,0.1560,LightGBM
+Beras Kualitas Medium II,1,252,0.0030,0.0189,0.0205,0.0026,0.0186,0.0182,XGBoost
+Beras Kualitas Medium II,7,252,0.0089,0.0340,0.0613,0.0089,0.0342,0.0615,LightGBM
+Beras Kualitas Medium II,30,252,0.0185,0.0548,0.1274,0.0191,0.0545,0.1317,LightGBM
+Beras Kualitas Super I,1,252,0.0040,0.0301,0.0242,0.0036,0.0299,0.0218,XGBoost
+Beras Kualitas Super I,7,252,0.0114,0.0477,0.0686,0.0115,0.0478,0.0689,LightGBM
+Beras Kualitas Super I,30,252,0.0399,0.1076,0.2402,0.0403,0.1073,0.2428,LightGBM
+Beras Kualitas Super II,1,252,0.0032,0.0224,0.0208,0.0030,0.0225,0.0194,XGBoost
+Beras Kualitas Super II,7,252,0.0107,0.0408,0.0693,0.0108,0.0408,0.0696,LightGBM
+Beras Kualitas Super II,30,252,0.0284,0.0749,0.1834,0.0286,0.0747,0.1849,LightGBM
+Bawang Merah Ukuran Sedang,1,252,0.1867,0.6624,0.4140,0.1826,0.6626,0.4052,XGBoost
+Bawang Merah Ukuran Sedang,7,252,0.7116,1.4983,1.5861,0.7147,1.5003,1.5937,LightGBM
+Bawang Merah Ukuran Sedang,30,252,1.4760,2.4903,3.3584,1.4767,2.5000,3.3584,XGBoost
+Cabai Rawit Hijau,1,252,0.8235,1.6456,1.6342,0.8182,1.6625,1.6235,XGBoost
+Cabai Rawit Hijau,7,252,2.4671,3.7075,4.7558,2.4995,3.7524,4.8191,LightGBM
+Cabai Rawit Hijau,30,252,4.1799,6.9875,7.9944,4.2093,7.0159,8.0433,LightGBM
+Cabai Rawit Merah,1,252,2.0350,4.5232,3.1949,2.0501,4.5072,3.2180,LightGBM
+Cabai Rawit Merah,7,252,5.3740,8.2238,8.5360,5.5405,8.5217,8.7683,LightGBM
+Cabai Rawit Merah,30,252,11.2083,15.2039,18.5784,10.9654,14.9129,18.0866,XGBoost
