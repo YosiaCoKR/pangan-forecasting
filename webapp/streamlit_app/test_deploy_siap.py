@@ -16,6 +16,21 @@ artefak, dan SEMUA komoditas x horizon benar-benar bisa diramalkan.
 import pandas as pd
 
 import forecast
+
+# Streamlit Cloud memakai requirements.txt yang SEFOLDER app.py, bukan root —
+# pin yang cuma ditambah di salah satunya tidak ikut terpasang saat deploy.
+from pathlib import Path
+
+
+def _pin(berkas: Path) -> set[str]:
+    baris = (b.strip() for b in berkas.read_text(encoding="utf-8").splitlines())
+    return {b for b in baris if b and not b.startswith("#")}
+
+
+_sini = Path(__file__).resolve().parent
+assert _pin(_sini / "requirements.txt") == _pin(_sini.parents[1] / "requirements.txt"), (
+    "requirements.txt root dan webapp/streamlit_app/ tidak sama"
+)
 from data.mock_commodities import get_komoditas_list
 from data.mock_prices import get_price_history
 
