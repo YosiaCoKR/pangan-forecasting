@@ -237,27 +237,89 @@ def simpan_harga_batch(tanggal, harga_per_slug: dict[str, float]) -> int:
     Mengembalikan jumlah komoditas yang benar-benar tersimpan.
     """
     tanggal_ts = pd.Timestamp(tanggal)
-    tersimpan = 0
+    return len(
+        simpan_harga_banyak(
+            {slug: pd.Series([harga], index=[tanggal_ts]) for slug, harga in harga_per_slug.items()}
+        )
+    )
 
-    for slug, harga in harga_per_slug.items():
+
+def simpan_harga_banyak(harga_per_slug: dict[str, pd.Series]) -> dict[str, tuple[int, int]]:
+    """Upsert BANYAK tanggal per komoditas (Series harga Rupiah, index tanggal).
+
+    Satu-satunya jalur tulis riwayat — dipakai form input (satu tanggal) dan
+    unggah CSV (banyak tanggal). Tanggal yang sudah ada DITIMPA, yang belum
+    ada ditambahkan; `.pkl` ditulis sekali di akhir.
+
+    Mengembalikan `{slug: (jumlah_baru, jumlah_ditimpa)}` untuk komoditas yang
+    dikenal saja.
+    """
+    hasil: dict[str, tuple[int, int]] = {}
+    for slug, seri in harga_per_slug.items():
         get_price_history(slug, hari=1)  # pastikan riwayat dasar sudah dimuat
         df = _cache_riwayat.get(slug)
-        if df is None:
+        if df is None or seri.empty:
             continue
 
-        if (df["tanggal"] == tanggal_ts).any():
-            df.loc[df["tanggal"] == tanggal_ts, "harga"] = harga
-        else:
-            df = pd.concat(
-                [df, pd.DataFrame({"tanggal": [tanggal_ts], "harga": [harga]})],
-                ignore_index=True,
-            )
-        _cache_riwayat[slug] = df.sort_values("tanggal").reset_index(drop=True)
-        tersimpan += 1
+        masuk = pd.DataFrame({"tanggal": pd.DatetimeIndex(seri.index), "harga": seri.to_numpy(float)})
+        ditimpa = int(masuk["tanggal"].isin(df["tanggal"]).sum())
+        _cache_riwayat[slug] = (
+            pd.concat([df, masuk], ignore_index=True)
+            .drop_duplicates("tanggal", keep="last")
+            .sort_values("tanggal")
+            .reset_index(drop=True)
+        )
+        hasil[slug] = (len(masuk) - ditimpa, ditimpa)
 
-    if tersimpan:
+    if hasil:
         _simpan_riwayat_ke_pkl()
-    return tersimpan
+    return hasil
+
+
+def baca_csv_harga(berkas) -> tuple[dict[str, pd.Series], list[str]]:
+    """Baca CSV unggahan admin jadi `{slug: Series harga Rupiah}` siap di-upsert.
+
+    Format = format dataset riset: kolom `tanggal` (YYYY-MM-DD) + satu kolom
+    per NAMA komoditas. Sel kosong dilewati (tidak mengubah apa pun). Kolom
+    yang bukan komoditas dikembalikan sebagai daftar kedua supaya admin tahu
+    apa yang diabaikan. Isi yang tidak sah -> `ValueError` berisi alasannya;
+    tidak ada yang disimpan separuh.
+    """
+    try:
+        df = pd.read_csv(berkas)
+    except Exception as exc:
+        raise ValueError(f"berkas bukan CSV yang bisa dibaca ({exc})") from exc
+    df.columns = df.columns.str.strip()
+    if "tanggal" not in df.columns:
+        raise ValueError("kolom `tanggal` tidak ada")
+
+    tanggal = pd.to_datetime(df["tanggal"], format="%Y-%m-%d", errors="coerce")
+    if tanggal.isna().any():
+        raise ValueError(f"{int(tanggal.isna().sum())} baris tanggalnya bukan format YYYY-MM-DD")
+    if (tanggal > pd.Timestamp.today().normalize()).any():
+        raise ValueError("ada tanggal di masa depan")
+    df = df.assign(tanggal=tanggal).drop_duplicates("tanggal", keep="last").set_index("tanggal")
+
+    slug_per_nama = {k.nama: k.slug for k in get_komoditas_list()}
+    diabaikan = [kolom for kolom in df.columns if kolom not in slug_per_nama]
+    hasil: dict[str, pd.Series] = {}
+    for nama, slug in slug_per_nama.items():
+        if nama not in df.columns:
+            continue
+        angka = pd.to_numeric(df[nama], errors="coerce")
+        if (angka.isna() & df[nama].notna()).any() or (angka <= 0).any():
+            raise ValueError(f"kolom `{nama}` berisi nilai bukan angka atau <= 0")
+        angka = angka.dropna()
+        # ponytail: heuristik satuan — dataset riset menulis RIBUAN rupiah
+        # (10.400 = Rp 10.400), jadi nilai < 1000 dianggap ribuan dan sisanya
+        # Rupiah aktual. Aman selama tidak ada harga pangan < Rp 1.000/kg;
+        # kalau itu berubah, ganti dengan pilihan satuan eksplisit di form.
+        angka = angka.where(angka >= forecast.SKALA_HARGA, angka * forecast.SKALA_HARGA)
+        if not angka.empty:
+            hasil[slug] = angka
+    if not hasil:
+        raise ValueError("tidak ada kolom komoditas yang cocok dengan dataset atau semua selnya kosong")
+    return hasil, diabaikan
 
 
 def get_kartu_harga(slug: str) -> KartuHarga | None:

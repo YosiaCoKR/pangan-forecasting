@@ -73,6 +73,12 @@ def main() -> None:
         icon=":material/edit_note:",
         visibility=visibilitas_admin,
     )
+    admin_upload_dataset_page = st.Page(
+        "views/admin_upload_dataset.py",
+        title="Unggah Dataset",
+        icon=":material/upload_file:",
+        visibility=visibilitas_admin,
+    )
     admin_model_settings_page = st.Page(
         "views/admin_model_settings.py",
         title="Pengaturan Model",
@@ -103,6 +109,7 @@ def main() -> None:
             "Admin": [
                 admin_login_page,
                 admin_input_harga_page,
+                admin_upload_dataset_page,
                 admin_model_settings_page,
                 admin_ambang_settings_page,
                 admin_audit_log_page,

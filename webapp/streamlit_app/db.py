@@ -43,7 +43,7 @@ def catat_aktivitas_admin(aksi: str, sesi: str, detail: str | None = None) -> No
     """Catat satu baris log aktivitas admin.
 
     `aksi`: "login"/"logout" (sesi admin) atau aksi perubahan data —
-    "harga_diperbarui", "model_diubah", "ambang_diubah". `sesi`: penanda
+    "harga_diperbarui", "dataset_diunggah", "model_diubah", "ambang_diubah". `sesi`: penanda
     sesi tab admin (lihat `auth.sesi_admin_saat_ini`), supaya semua aksi
     dalam satu sesi login bisa dikorelasikan saat audit. `detail`: ringkasan
     APA yang berubah, opsional (kosong untuk login/logout).

@@ -120,6 +120,46 @@ assert float(muat_ulang[slug_a]["harga"].iloc[-1]) == 12_345.0, (
 )
 print("ok simpan harga batch")
 
+# --- unggah CSV: tanggal ada ditimpa, tanggal baru ditambah, sel kosong dilewati ---
+import io
+
+nama_a, nama_b = komoditas[0].nama, komoditas[1].nama
+baris_a = len(mock_prices.get_price_history(slug_a, hari=SEMUA))
+baris_b = len(mock_prices.get_price_history(slug_b, hari=SEMUA))
+harga_b_lama = mock_prices.harga_terakhir(slug_b)
+tanggal_csv_baru = tanggal_baru + timedelta(days=1)
+csv = (
+    f"tanggal,{nama_a},{nama_b},Kolom Asing\n"
+    f"{tanggal_baru},13.500,,x\n"  # ribuan (format dataset); nama_b kosong
+    f"{tanggal_csv_baru},14000,,x\n"  # Rupiah penuh
+)
+harga_csv, diabaikan = mock_prices.baca_csv_harga(io.StringIO(csv))
+assert diabaikan == ["Kolom Asing"]
+assert set(harga_csv) == {slug_a}, "kolom yang semua selnya kosong tidak boleh ikut"
+assert mock_prices.simpan_harga_banyak(harga_csv) == {slug_a: (1, 1)}
+riwayat_a = mock_prices.get_price_history(slug_a, hari=SEMUA)
+assert len(riwayat_a) == baris_a + 1
+assert riwayat_a["harga"].iloc[-2:].tolist() == [13_500.0, 14_000.0]
+assert riwayat_a["tanggal"].is_monotonic_increasing
+assert len(mock_prices.get_price_history(slug_b, hari=SEMUA)) == baris_b
+assert mock_prices.harga_terakhir(slug_b) == harga_b_lama, "sel kosong tidak boleh mengubah harga"
+
+for csv_rusak in (
+    f"{nama_a}\n10\n",  # tanpa kolom tanggal
+    f"tanggal,{nama_a}\n31/12/2024,10\n",  # format tanggal salah
+    f"tanggal,{nama_a}\n2999-01-01,10\n",  # masa depan
+    f"tanggal,{nama_a}\n{tanggal_baru},abc\n",  # bukan angka
+    f"tanggal,{nama_a}\n{tanggal_baru},-5\n",  # negatif
+    "tanggal,Kolom Asing\n2024-01-01,1\n",  # tak ada komoditas dikenal
+):
+    try:
+        mock_prices.baca_csv_harga(io.StringIO(csv_rusak))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(f"CSV rusak lolos: {csv_rusak!r}")
+print("ok unggah csv")
+
 # --- harga hasil input admin benar-benar mengubah prediksi ---
 riwayat = mock_prices.get_price_history(
     komoditas[0].slug, hari=mock_prices.RENTANG_HARI_MAKS

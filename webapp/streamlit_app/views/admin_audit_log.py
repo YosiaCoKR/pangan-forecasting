@@ -35,6 +35,7 @@ _LABEL_AKSI = {
     "login": "🟢 Masuk",
     "logout": "🔴 Keluar",
     "harga_diperbarui": "✏️ Harga diperbarui",
+    "dataset_diunggah": "📤 Dataset diunggah",
     "model_diubah": "⚙️ Model diubah",
     "ambang_diubah": "🚨 Ambang diubah",
 }
@@ -42,6 +43,7 @@ _AKSI_DARI_LABEL = {
     "Masuk": "login",
     "Keluar": "logout",
     "Harga diperbarui": "harga_diperbarui",
+    "Dataset diunggah": "dataset_diunggah",
     "Model diubah": "model_diubah",
     "Ambang diubah": "ambang_diubah",
 }
