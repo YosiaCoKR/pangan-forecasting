@@ -85,6 +85,12 @@ def main() -> None:
         icon=":material/tune:",
         visibility=visibilitas_admin,
     )
+    admin_evaluasi_model_page = st.Page(
+        "views/admin_evaluasi_model.py",
+        title="Evaluasi Model",
+        icon=":material/analytics:",
+        visibility=visibilitas_admin,
+    )
     admin_ambang_settings_page = st.Page(
         "views/admin_ambang_settings.py",
         title="Pengaturan Ambang",
@@ -111,6 +117,7 @@ def main() -> None:
                 admin_input_harga_page,
                 admin_upload_dataset_page,
                 admin_model_settings_page,
+                admin_evaluasi_model_page,
                 admin_ambang_settings_page,
                 admin_audit_log_page,
             ],

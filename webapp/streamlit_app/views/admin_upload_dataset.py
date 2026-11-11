@@ -34,14 +34,15 @@ st.markdown(
 
 nama_per_slug = {k.slug: k.nama for k in get_komoditas_list()}
 st.caption(
-    "Format CSV/XLSX (sheet pertama): kolom `tanggal` (YYYY-MM-DD atau sel tanggal Excel) + kolom bernama persis: "
-    + ", ".join(f"`{nama}`" for nama in nama_per_slug.values())
-    + ". Tabel unduhan \"Tabel Harga Berdasarkan Daerah\" (baris = komoditas, kolom = tanggal) "
-    "juga bisa langsung diunggah tanpa diubah. Harga boleh dalam ribuan (10.400) seperti dataset riset atau Rupiah penuh (10400). "
-    "Sel kosong dilewati."
+    "Unggah langsung berkas unduhan \"Tabel Harga Berdasarkan Daerah\" (XLSX/CSV), "
+    "atau tabel berkolom `tanggal` + nama komoditas."
 )
 
-berkas = st.file_uploader("Berkas CSV atau XLSX", type=["csv", "xlsx"])
+berkas = st.file_uploader(
+    "Berkas CSV atau XLSX",
+    type=["csv", "xlsx"],
+    help="Komoditas yang dibaca: " + ", ".join(nama_per_slug.values()) + ". Sel kosong dilewati.",
+)
 if berkas is not None:
     try:
         harga_per_slug, diabaikan = baca_csv_harga(berkas)
