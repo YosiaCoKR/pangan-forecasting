@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import streamlit as st
 from auth import require_admin, sesi_admin_saat_ini, tombol_logout
-from config import get_ambang_ews, reset_ambang_ews, set_ambang_ews
+from config import AMBANG_EWS_DEFAULT, get_ambang_ews, reset_ambang_ews, set_ambang_ews
 from data.mock_commodities import get_komoditas_list
 from db import catat_aktivitas_admin
 from formatting import format_rupiah
@@ -29,6 +29,22 @@ def _ringkas_ambang(persen_kenaikan: float | None, harga_tetap: float | None) ->
         else "harga: nonaktif"
     )
     return ", ".join(bagian)
+
+
+def _reset_ambang(slug: str, nama: str, kunci_persen: str, kunci_harga: str) -> None:
+    """Callback tombol "Reset ke Default" — jalan SEBELUM skrip dirender ulang.
+
+    Kolom isian harus diisi lewat `st.session_state` di sini. Sekadar
+    menghapus key-nya tidak cukup: browser tetap menampilkan angka lama
+    (mis. 14.900) walau ambang yang tersimpan sudah kembali ke default.
+    """
+    reset_ambang_ews(slug)
+    catat_aktivitas_admin(
+        "ambang_diubah", sesi_admin_saat_ini(), detail=f"{nama}: direset ke default"
+    )
+    st.session_state[kunci_persen] = AMBANG_EWS_DEFAULT["persen_kenaikan"]
+    st.session_state[kunci_harga] = AMBANG_EWS_DEFAULT["harga_tetap"]
+    st.session_state["ambang-reset-pesan"] = nama
 
 
 require_admin()
@@ -90,9 +106,8 @@ with kolom_form:
             key=kunci_harga,
         )
 
-        # Pesan sukses reset "menyeberang" satu rerun (tombol reset manggil
-        # st.rerun() supaya widget di atas sempat baca ulang nilai default) —
-        # ditaruh di session_state lalu dibaca+dibuang sekali di sini.
+        # Pesan sukses reset dititipkan callback `_reset_ambang` di
+        # session_state, lalu dibaca+dibuang sekali di sini.
         pesan_reset = st.session_state.pop("ambang-reset-pesan", None)
         if pesan_reset == komoditas_terpilih.nama:
             st.success(f"Ambang **{pesan_reset}** dikembalikan ke default.")
@@ -116,20 +131,17 @@ with kolom_form:
                 )
                 st.success(f"Ambang **{komoditas_terpilih.nama}** disimpan.")
         with kolom_reset:
-            if st.button("Reset ke Default", width="stretch"):
-                reset_ambang_ews(komoditas_terpilih.slug)
-                catat_aktivitas_admin(
-                    "ambang_diubah",
-                    sesi_admin_saat_ini(),
-                    detail=f"{komoditas_terpilih.nama}: direset ke default",
-                )
-                # Hapus state widget supaya baris `st.number_input` di atas
-                # membaca ulang nilai default (baru saja disimpan) dari
-                # `get_ambang_ews`, bukan angka lama yang masih nyantol.
-                st.session_state.pop(kunci_persen, None)
-                st.session_state.pop(kunci_harga, None)
-                st.session_state["ambang-reset-pesan"] = komoditas_terpilih.nama
-                st.rerun()
+            st.button(
+                "Reset ke Default",
+                width="stretch",
+                on_click=_reset_ambang,
+                args=(
+                    komoditas_terpilih.slug,
+                    komoditas_terpilih.nama,
+                    kunci_persen,
+                    kunci_harga,
+                ),
+            )
 
         ambang_terkini = get_ambang_ews(komoditas_terpilih.slug)
         if (persen_terpilih, harga_tetap_terpilih) != (
