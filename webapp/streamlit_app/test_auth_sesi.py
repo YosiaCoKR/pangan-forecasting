@@ -57,10 +57,10 @@ assert "st.query_params" not in kode_auth.replace(auth.__doc__ or "", ""), (
     "butuh tahan refresh"
 )
 
-# Sesi tahan refresh lewat cookie: Strict supaya tidak ikut terkirim dari
-# situs lain, dan umurnya tidak melebihi umur absolut sesi di server.
-assert "st.context.cookies.get(_COOKIE_SESI)" in kode_auth, "sesi harus bisa dipulihkan dari cookie"
-assert "SameSite=Strict" in kode_auth and "max-age={_TIMEOUT_ABSOLUT}" in kode_auth
+# Sesi tahan refresh lewat sessionStorage tab; id dari browser hanya boleh
+# diterima kalau masih terdaftar di server.
+assert "sessionStorage.setItem" in kode_auth, "id sesi harus dititipkan ke sessionStorage"
+assert "hasil.sid in _sesi_aktif()" in kode_auth, "id dari browser harus dicek ke daftar sesi server"
 
 id_sesi = auth.secrets.token_urlsafe(32)
 assert len(id_sesi) >= 22, "id sesi terlalu pendek"

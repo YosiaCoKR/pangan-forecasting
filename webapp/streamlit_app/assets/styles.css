@@ -340,3 +340,9 @@ div[class*="st-key-kartu-komoditas"]:hover {
     color: var(--ppj-text-muted);
     background: var(--ppj-bg-soft);
 }
+
+/* Komponen penyimpan sesi admin (auth.pasang_penyimpan_sesi) tidak punya
+   tampilan — keluarkan dari alur supaya tidak menambah jarak di atas halaman. */
+.st-key-ppj-sesi-admin {
+    position: absolute;
+}

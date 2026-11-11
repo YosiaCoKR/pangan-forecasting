@@ -16,11 +16,15 @@ membuat URL setara kata sandi: ikut tersimpan di riwayat browser, ikut
 ter-screenshot, dan ikut terkirim kalau URL-nya dibagikan.
 
 Supaya refresh halaman (F5) TIDAK memaksa login ulang, id sesi dititipkan di
-cookie `_COOKIE_SESI` (SameSite=Strict, Secure di https): `st.session_state`
-hilang saat refresh, cookie tidak, jadi `admin_sudah_masuk()` memulihkan sesi
-dari cookie selama sesinya masih hidup di server. Cookie cuma pembawa id —
-batas 15 menit idle & 8 jam tetap diputuskan server, dan logout mematikan
-sesinya di server sehingga cookie yang tersisa tidak berguna.
+`sessionStorage` tab browser lewat komponen kecil `pasang_penyimpan_sesi()`
+(dipanggil `app.py` di tiap run): `st.session_state` hilang saat refresh,
+`sessionStorage` tidak, jadi sesi dipulihkan selama masih hidup di server.
+Bukan cookie: versi cookie (dibaca lewat `st.context.cookies`) lolos di lokal
+tapi tidak memulihkan sesi di deploy Streamlit Community Cloud, jadi nilainya
+dibaca langsung di browser tanpa bergantung pada header permintaan.
+`sessionStorage` cuma pembawa id — batas 15 menit idle & 8 jam tetap
+diputuskan server, dan logout mematikan sesinya di server sehingga id yang
+tersisa di tab tidak berguna. Isinya hilang sendiri saat tab ditutup.
 
 Kredensial dibaca dari environment variable `ADMIN_USERNAME`/`ADMIN_PASSWORD`.
 Di Streamlit Community Cloud, isi keduanya di Settings > Secrets sebagai kunci
@@ -51,7 +55,6 @@ from db import catat_aktivitas_admin
 load_dotenv(Path(__file__).parent / ".env")
 
 _SESI_ID_KEY = "admin_sesi_id"
-_COOKIE_SESI = "ppj_admin_sesi"
 _SESI_BERAKHIR_KEY = "admin_sesi_berakhir"  # penanda pesan "sesi habis" di halaman login
 _TIMEOUT_IDLE = 15 * 60  # detik tanpa aktivitas sebelum sesi gugur
 _TIMEOUT_ABSOLUT = 8 * 60 * 60  # umur maksimum sesi sejak login, walau terus aktif
@@ -115,40 +118,48 @@ def _sesi_masih_hidup(
 
 def admin_sudah_masuk() -> bool:
     """Gerbang tunggal status admin — sekaligus memperpanjang masa aktif sesi."""
-    id_tab = st.session_state.get(_SESI_ID_KEY)
-    # Tab baru / habis refresh: session_state kosong, pulihkan dari cookie.
-    id_sesi = id_tab or st.context.cookies.get(_COOKIE_SESI)
+    id_sesi = st.session_state.get(_SESI_ID_KEY)
     if not id_sesi:
         return False
     if not _sesi_masih_hidup(_sesi_aktif(), id_sesi, time.time()):
-        # Pesan "sesi habis" hanya untuk tab yang tadinya memang masuk —
-        # cookie basi di kunjungan baru cukup diabaikan.
-        if st.session_state.pop(_SESI_ID_KEY, None):
-            st.session_state[_SESI_BERAKHIR_KEY] = True
+        st.session_state.pop(_SESI_ID_KEY, None)
+        st.session_state[_SESI_BERAKHIR_KEY] = True
         return False
-    st.session_state[_SESI_ID_KEY] = id_sesi
     return True
 
 
-def _tulis_cookie_sesi() -> None:
-    """Titipkan id sesi ke cookie browser supaya sesi tahan refresh.
+# Simpan id sesi ke sessionStorage tab (kalau `data` terisi), lalu laporkan isi
+# sessionStorage ke Python. Tidak melapor kalau kosong, supaya pengunjung
+# publik tidak kena rerun tambahan.
+# ponytail: sessionStorage terbaca JS halaman. Aman selama app tidak merender
+# HTML dari input pengguna; kalau kelak iya, pindah ke reverse proxy auth
+# dengan cookie HttpOnly.
+_penyimpan_sesi = st.components.v2.component(
+    "ppj_sesi_admin",
+    js="""
+export default function({ data, setStateValue }) {
+    const K = "ppj_admin_sesi";
+    if (data) sessionStorage.setItem(K, data);
+    const sid = sessionStorage.getItem(K);
+    if (sid) setStateValue("sid", sid);
+}
+""",
+)
 
-    `st.context.cookies` berisi cookie saat halaman dimuat, jadi skrip ini
-    hanya dikirim sampai refresh berikutnya (setelah itu cookie sudah ada).
+
+def pasang_penyimpan_sesi() -> None:
+    """Pulihkan sesi admin setelah refresh. Panggil sekali per run, SEBELUM
+    `admin_sudah_masuk()` pertama (lihat `app.py`).
+
+    Id dari browser hanya diterima kalau masih terdaftar di `_sesi_aktif()`;
+    batas idle/umur tetap dicek `admin_sudah_masuk()` sesudahnya.
     """
-    id_sesi = st.session_state.get(_SESI_ID_KEY)
-    if not id_sesi or st.context.cookies.get(_COOKIE_SESI) == id_sesi:
-        return
-    # ponytail: cookie ditulis lewat JS, jadi tidak bisa HttpOnly (Streamlit
-    # belum punya API set-cookie). Kalau app ini kelak merender HTML dari
-    # input pengguna, pindahkan ke reverse proxy auth dengan cookie HttpOnly.
-    # Aman dari injeksi: id_sesi dibuat server (token_urlsafe: A-Z a-z 0-9 _ -).
-    st.html(
-        f"<script>document.cookie='{_COOKIE_SESI}={id_sesi}; path=/; "
-        f"max-age={_TIMEOUT_ABSOLUT}; SameSite=Strict'"
-        "+(location.protocol==='https:'?'; Secure':'')</script>",
-        unsafe_allow_javascript=True,
+    id_tab = st.session_state.get(_SESI_ID_KEY)
+    hasil = _penyimpan_sesi(
+        data=id_tab or "", key="ppj-sesi-admin", on_sid_change=lambda: None
     )
+    if not id_tab and hasil.sid in _sesi_aktif():
+        st.session_state[_SESI_ID_KEY] = hasil.sid
 
 
 def masuk_sebagai_admin() -> None:
@@ -235,10 +246,8 @@ def tombol_logout() -> None:
     """Tombol keluar admin — dipasang di tiap halaman kerja admin (Input
     Harga, Pengaturan Model, Pengaturan Ambang), bukan cuma di hub Panel
     Admin, supaya admin bisa logout dari halaman manapun tanpa harus
-    navigasi balik ke hub dulu. Karena ada di semua halaman admin, di sini
-    juga cookie sesi dititipkan ke browser.
+    navigasi balik ke hub dulu.
     """
-    _tulis_cookie_sesi()
     st.markdown('<div class="ppj-spacer-sm"></div>', unsafe_allow_html=True)
     if st.button("Kunci Panel Admin"):
         keluar_dari_admin()

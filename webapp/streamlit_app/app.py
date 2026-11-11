@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import streamlit as st
-from auth import admin_sudah_masuk
+from auth import admin_sudah_masuk, pasang_penyimpan_sesi
 
 APP_DIR = Path(__file__).parent
 
@@ -31,6 +31,7 @@ def main() -> None:
         initial_sidebar_state="collapsed",
     )
     load_custom_css()
+    pasang_penyimpan_sesi()
 
     dashboard_page = st.Page(
         "views/dashboard.py",
