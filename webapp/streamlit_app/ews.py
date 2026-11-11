@@ -64,3 +64,22 @@ def periksa_peringatan(riwayat: pd.DataFrame, slug: str, nama_komoditas: str) ->
         ambang_harga_tetap=ambang_harga,
         alasan=alasan,
     )
+
+
+def ambang_rupiah(slug: str, harga_sekarang: float) -> tuple[float, str] | None:
+    """Ambang EWS komoditas ini sebagai HARGA (Rupiah) + keterangannya.
+
+    Ambang persen diterjemahkan dari harga saat ini (10% pada Rp 15.000 ->
+    Rp 16.500), supaya pengguna melihat angka batasnya, bukan cuma persennya.
+    Kalau ambang persen DAN harga tetap sama-sama disetel, yang dikembalikan
+    yang lebih rendah — itu yang lebih dulu memicu peringatan. `None` kalau
+    komoditas ini tidak punya ambang sama sekali.
+    """
+    ambang = config.get_ambang_ews(slug)
+    kandidat: list[tuple[float, str]] = []
+    if ambang.get("persen_kenaikan") is not None:
+        persen = float(ambang["persen_kenaikan"])
+        kandidat.append((harga_sekarang * (1 + persen / 100), f"naik {persen:g}% dari harga saat ini"))
+    if ambang.get("harga_tetap") is not None:
+        kandidat.append((float(ambang["harga_tetap"]), "batas harga tetap"))
+    return min(kandidat) if kandidat else None

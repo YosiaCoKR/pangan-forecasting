@@ -1,4 +1,5 @@
-"""Halaman Dashboard Pangan (publik) — kartu 9 komoditas + detail-nya."""
+"""Halaman Dashboard Pangan (publik) — pilih komoditas + detailnya (grafik
+harian/mingguan/bulanan, prediksi, ambang batas), lalu kartu 9 komoditas."""
 
 from __future__ import annotations
 
@@ -8,6 +9,7 @@ from data.mock_commodities import get_kategori_list
 from data.mock_prices import KartuHarga, get_dashboard_cards, get_price_history
 from formatting import format_rupiah, format_waktu_pembaruan, tren_status
 from komponen_prediksi import panel_prediksi
+from views.detail_komoditas import tampilkan_detail
 
 _KELAS_TREN_KARTU = {"naik": "ppj-trend-up", "turun": "ppj-trend-down", "tetap": "ppj-trend-flat"}
 
@@ -100,6 +102,19 @@ def tampilkan_grid_dashboard() -> None:
         )
         return
 
+    # Detail langsung di Dashboard: pilih komoditas, lihat grafik & prediksinya
+    # tanpa pindah halaman. Pilihan disimpan di `komoditas_dipilih` supaya
+    # halaman Performa Model membuka komoditas yang sama.
+    nama_list = [k.komoditas.nama for k in kartu_list]
+    slug_per_nama = {k.komoditas.nama: k.komoditas.slug for k in kartu_list}
+    slug_awal = st.session_state.get("komoditas_dipilih")
+    nama_awal = next((n for n, s in slug_per_nama.items() if s == slug_awal), nama_list[0])
+    nama_terpilih = st.selectbox("Pilih komoditas", options=nama_list, index=nama_list.index(nama_awal))
+    st.session_state["komoditas_dipilih"] = slug_per_nama[nama_terpilih]
+    tampilkan_detail(slug_per_nama[nama_terpilih], di_dashboard=True)
+
+    st.divider()
+    st.markdown("### Semua Komoditas")
     for kunci_kategori, label_kategori in get_kategori_list():
         kelompok = [k for k in kartu_list if k.komoditas.kategori == kunci_kategori]
         if not kelompok:

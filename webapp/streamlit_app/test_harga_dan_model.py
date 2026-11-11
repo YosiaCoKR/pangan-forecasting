@@ -127,11 +127,14 @@ nama_a, nama_b = komoditas[0].nama, komoditas[1].nama
 baris_a = len(mock_prices.get_price_history(slug_a, hari=SEMUA))
 baris_b = len(mock_prices.get_price_history(slug_b, hari=SEMUA))
 harga_b_lama = mock_prices.harga_terakhir(slug_b)
-tanggal_csv_baru = tanggal_baru + timedelta(days=1)
+# Dua-duanya tanggal LAMPAU (unggahan bertanggal masa depan ditolak): satu
+# yang sudah ada di riwayat (ditimpa), satu sebelum awal riwayat (ditambah).
+tgl_timpa = tanggal_ada
+tgl_tambah = (sebelum["tanggal"].iloc[0] - timedelta(days=1)).date()
 csv = (
     f"tanggal,{nama_a},{nama_b},Kolom Asing\n"
-    f"{tanggal_baru},13.500,,x\n"  # ribuan (format dataset); nama_b kosong
-    f"{tanggal_csv_baru},14000,,x\n"  # Rupiah penuh
+    f"{tgl_timpa},13.500,,x\n"  # ribuan (format dataset); nama_b kosong
+    f"{tgl_tambah},14000,,x\n"  # Rupiah penuh
 )
 harga_csv, diabaikan = mock_prices.baca_csv_harga(io.StringIO(csv))
 assert diabaikan == ["Kolom Asing"]
@@ -139,7 +142,8 @@ assert set(harga_csv) == {slug_a}, "kolom yang semua selnya kosong tidak boleh i
 assert mock_prices.simpan_harga_banyak(harga_csv) == {slug_a: (1, 1)}
 riwayat_a = mock_prices.get_price_history(slug_a, hari=SEMUA)
 assert len(riwayat_a) == baris_a + 1
-assert riwayat_a["harga"].iloc[-2:].tolist() == [13_500.0, 14_000.0]
+assert float(riwayat_a["harga"].iloc[0]) == 14_000.0, "tanggal baru tidak ditambahkan"
+assert riwayat_a.loc[riwayat_a["tanggal"] == pd.Timestamp(tgl_timpa), "harga"].tolist() == [13_500.0]
 assert riwayat_a["tanggal"].is_monotonic_increasing
 assert len(mock_prices.get_price_history(slug_b, hari=SEMUA)) == baris_b
 assert mock_prices.harga_terakhir(slug_b) == harga_b_lama, "sel kosong tidak boleh mengubah harga"
@@ -148,8 +152,8 @@ for csv_rusak in (
     f"{nama_a}\n10\n",  # tanpa kolom tanggal
     f"tanggal,{nama_a}\n31/12/2024,10\n",  # format tanggal salah
     f"tanggal,{nama_a}\n2999-01-01,10\n",  # masa depan
-    f"tanggal,{nama_a}\n{tanggal_baru},abc\n",  # bukan angka
-    f"tanggal,{nama_a}\n{tanggal_baru},-5\n",  # negatif
+    f"tanggal,{nama_a}\n{tgl_timpa},abc\n",  # bukan angka
+    f"tanggal,{nama_a}\n{tgl_timpa},-5\n",  # negatif
     "tanggal,Kolom Asing\n2024-01-01,1\n",  # tak ada komoditas dikenal
 ):
     try:
@@ -161,7 +165,7 @@ for csv_rusak in (
 # XLSX: sel tanggal asli Excel + tanggal teks, hasilnya harus sama dengan CSV.
 xlsx = io.BytesIO()
 pd.DataFrame(
-    {"tanggal": [pd.Timestamp(tanggal_baru), str(tanggal_csv_baru)], nama_a: [13.5, 14000]}
+    {"tanggal": [pd.Timestamp(tgl_timpa), str(tgl_tambah)], nama_a: [13.5, 14000]}
 ).to_excel(xlsx, index=False)
 xlsx.seek(0)
 xlsx.name = "Harga.XLSX"
@@ -171,7 +175,7 @@ assert list(harga_xlsx[slug_a].index) == list(harga_csv[slug_a].index)
 # Tabel unduhan bentuk LEBAR (baris = komoditas, kolom = tanggal DD/ MM/ YYYY).
 lebar = (
     "No,Komoditas (Rp),"
-    f"{tanggal_baru:%d/ %m/ %Y},{tanggal_csv_baru:%d/ %m/ %Y}\n"
+    f"{tgl_timpa:%d/ %m/ %Y},{tgl_tambah:%d/ %m/ %Y}\n"
     'I,Beras,"16,450","16,500"\n'
     f'1,{nama_a} ,"13,500","14,000"\n'  # spasi di ujung nama, seperti unduhan asli
     f"2,{nama_b},-,-\n"

@@ -64,6 +64,8 @@ def gambar_grafik_harga(
     prediksi_label: Optional[str] = None,
     prediksi_persen: Optional[float] = None,
     sorot_peringatan: bool = False,
+    garis_ambang: Optional[float] = None,
+    format_tanggal: str = "%d %b",
 ) -> None:
     """Gambar grafik garis harga historis, dengan lintasan prediksi harian opsional.
 
@@ -78,6 +80,10 @@ def gambar_grafik_harga(
     dipakai pemanggil saat titik itu (H+30) memicu peringatan dini (EWS),
     supaya titik yang jadi alasan peringatan langsung terlihat di grafik,
     bukan cuma disebut di teks banner/pop-up.
+
+    `garis_ambang` (Rupiah) menggambar garis mendatar ambang peringatan.
+    Sengaja TRACE, bukan `add_hline`: garis bantu tidak ikut menentukan
+    rentang sumbu-Y, jadi ambang +10% akan berada di luar grafik.
     """
     w = _palet()
     ada_prediksi = trajektori_prediksi is not None and not trajektori_prediksi.empty
@@ -172,6 +178,19 @@ def gambar_grafik_harga(
                 )
             )
 
+    if garis_ambang is not None:
+        x_akhir = trajektori_prediksi.index[-1] if ada_prediksi else tanggal_akhir
+        fig.add_trace(
+            go.Scatter(
+                x=[riwayat["tanggal"].iloc[0], x_akhir],
+                y=[garis_ambang, garis_ambang],
+                mode="lines",
+                line=dict(color=w["peringatan"], width=1.5, dash="dot"),
+                name=f"Ambang batas (Rp {format_rupiah(garis_ambang)})",
+                hovertemplate="Ambang: Rp %{y:,.0f}<extra></extra>",
+            )
+        )
+
     fig.update_layout(
         margin=dict(l=90, r=110, t=10, b=40),
         height=height,
@@ -205,7 +224,7 @@ def gambar_grafik_harga(
         font=dict(color=w["teks_muted"], family="Geist, sans-serif"),
     )
     fig.update_xaxes(
-        tickformat="%d %b",
+        tickformat=format_tanggal,
         showgrid=False,
         color=w["teks_muted"],
         linecolor=w["sumbu"],

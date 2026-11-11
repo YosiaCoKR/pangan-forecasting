@@ -29,12 +29,32 @@ _KELAS_TREN_HERO = {
 }
 
 
+# Tampilan grafik -> (jumlah hari riwayat, aturan resample, format sumbu tanggal).
+# Harian apa adanya; Mingguan/Bulanan = RATA-RATA harga per minggu/bulan.
+TAMPILAN_GRAFIK = {
+    "Harian": (90, None, "%d %b"),
+    "Mingguan": (365, "W", "%d %b %y"),
+    "Bulanan": (10**6, "MS", "%b %Y"),
+}
+
+
+def _riwayat_tampilan(slug: str, tampilan: str) -> tuple[pd.DataFrame, str]:
+    """Riwayat untuk satu tampilan grafik + format tanggal sumbu-X-nya."""
+    hari, aturan, format_tanggal = TAMPILAN_GRAFIK[tampilan]
+    riwayat = get_price_history(slug, hari=hari)
+    if aturan and not riwayat.empty:
+        riwayat = riwayat.set_index("tanggal")["harga"].resample(aturan).mean().dropna().reset_index()
+    return riwayat, format_tanggal
+
+
 def _gambar_chart(
     riwayat: pd.DataFrame,
     unit: str,
     hari_ke_depan: int | None = None,
     hasil: forecast.HasilPeramalan | None = None,
     peringatan_aktif: bool = False,
+    garis_ambang: float | None = None,
+    format_tanggal: str = "%d %b",
 ) -> None:
     if riwayat.empty:
         # Sama seperti historis.py — riwayat kosong (mis. komoditas baru
@@ -49,7 +69,7 @@ def _gambar_chart(
     ada_prediksi = hari_ke_depan is not None and hasil is not None
 
     if not ada_prediksi:
-        gambar_grafik_harga(riwayat, unit)
+        gambar_grafik_harga(riwayat, unit, format_tanggal=format_tanggal)
         return
 
     gambar_grafik_harga(
@@ -62,6 +82,7 @@ def _gambar_chart(
         # cuma disorot kalau pengguna memang sedang melihat lintasan 30 hari,
         # supaya titik yang disorot benar-benar ada di grafik yang tampil.
         sorot_peringatan=peringatan_aktif and hari_ke_depan == ews.HORIZON_EWS,
+        garis_ambang=garis_ambang,
     )
 
 
@@ -136,13 +157,17 @@ def _gambar_peringatan(slug: str, riwayat: pd.DataFrame, nama_komoditas: str) ->
     return True
 
 
-def tampilkan_detail(slug: str) -> None:
+def tampilkan_detail(slug: str, *, di_dashboard: bool = False) -> None:
+    """Detail satu komoditas. `di_dashboard=True` saat dipasang langsung di
+    Dashboard: tanpa tombol kembali, dan kunci widget dibedakan supaya tidak
+    bentrok dengan panel prediksi di kartu komoditas yang sama."""
     komoditas = get_komoditas_by_slug(slug)
     if komoditas is None:
         st.error("Komoditas tidak ditemukan.")
         return
 
-    if st.button("← Kembali ke Dashboard"):
+    awalan = f"dash-{slug}" if di_dashboard else slug
+    if not di_dashboard and st.button("← Kembali ke Dashboard"):
         st.session_state.pop("komoditas_dipilih", None)
         st.switch_page("views/dashboard.py")
 
@@ -155,23 +180,53 @@ def tampilkan_detail(slug: str) -> None:
 
     with kolom_prediksi:
         st.markdown("#### Prediksi Harga")
-        with st.container(border=True, key=f"kartu-prediksi-{slug}"):
-            rentang_terpilih, hasil = panel_prediksi(slug, riwayat, komoditas.nama)
+        with st.container(border=True, key=f"kartu-prediksi-{awalan}"):
+            rentang_terpilih, hasil = panel_prediksi(awalan, riwayat, komoditas.nama)
 
     with kolom_chart:
         st.markdown("#### Grafik Harga")
-        _gambar_chart(riwayat, komoditas.unit, rentang_terpilih, hasil, peringatan_aktif)
+        tampilan = st.segmented_control(
+            "Tampilan grafik",
+            options=list(TAMPILAN_GRAFIK),
+            default="Harian",
+            key=f"tampilan-grafik-{awalan}",
+            label_visibility="collapsed",
+        ) or "Harian"
+        if tampilan == "Harian":
+            ambang = ews.ambang_rupiah(slug, hasil.harga_sekarang) if hasil else None
+            _gambar_chart(
+                riwayat,
+                komoditas.unit,
+                rentang_terpilih,
+                hasil,
+                peringatan_aktif,
+                garis_ambang=ambang[0] if ambang else None,
+            )
+        else:
+            # Lintasan prediksi berskala HARIAN — menumpuknya di atas rata-rata
+            # mingguan/bulanan akan menyambung dua skala yang berbeda.
+            riwayat_ringkas, format_tanggal = _riwayat_tampilan(slug, tampilan)
+            _gambar_chart(riwayat_ringkas, komoditas.unit, format_tanggal=format_tanggal)
+            st.caption(
+                f"Rata-rata harga per {'minggu' if tampilan == 'Mingguan' else 'bulan'}. "
+                "Garis prediksi dan ambang batas tampil di grafik Harian."
+            )
 
     # `komoditas_dipilih` masih berisi slug halaman ini, jadi halaman Performa
     # Model langsung membuka komoditas yang sama tanpa perlu dipilih ulang.
-    if st.button("📊 Lihat performa model prediksi", width="stretch"):
+    if st.button("📊 Lihat performa model prediksi", width="stretch", key=f"performa-{awalan}"):
+        st.session_state["komoditas_dipilih"] = slug
         st.switch_page("views/performa_model.py")
 
 
-_slug_terpilih = st.session_state.get("komoditas_dipilih")
-if _slug_terpilih:
-    tampilkan_detail(_slug_terpilih)
-else:
-    st.warning("Komoditas belum dipilih.")
-    if st.button("← Kembali ke Dashboard"):
-        st.switch_page("views/dashboard.py")
+# Halaman ini juga di-import Dashboard untuk `tampilkan_detail`; bagian di
+# bawah hanya jalan saat dibuka sebagai halaman (Streamlit menjalankannya
+# sebagai `__main__`).
+if __name__ == "__main__":
+    _slug_terpilih = st.session_state.get("komoditas_dipilih")
+    if _slug_terpilih:
+        tampilkan_detail(_slug_terpilih)
+    else:
+        st.warning("Komoditas belum dipilih.")
+        if st.button("← Kembali ke Dashboard"):
+            st.switch_page("views/dashboard.py")

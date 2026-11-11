@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import logging
 
+import ews
 import forecast
 import pandas as pd
 import streamlit as st
+from data.mock_commodities import buat_slug
 from formatting import format_rupiah
 
 RENTANG_PREDIKSI = {"1 Hari": 1, "7 Hari": 7, "30 Hari": 30}
@@ -92,6 +94,16 @@ def panel_prediksi(
             value=f"Rp {format_rupiah(hasil.harga_prediksi)}",
             delta=f"{hasil.persen_perubahan:+.2f}%",
         )
+        # Ambang peringatan dalam Rupiah — admin menyetelnya sebagai persen,
+        # tapi yang dipahami pengguna adalah "batasnya di harga berapa".
+        ambang = ews.ambang_rupiah(buat_slug(nama_komoditas), hasil.harga_sekarang)
+        if ambang:
+            batas, keterangan = ambang
+            lewat = hasil.harga_prediksi >= batas
+            st.markdown(
+                f"Ambang batas: **Rp {format_rupiah(batas)}** ({keterangan})  \n"
+                + ("⚠️ Prediksi ini **melewati** ambang." if lewat else "✅ Prediksi ini masih di bawah ambang.")
+            )
         st.caption(f"Dihitung dengan model **{hasil.model_dipakai}**.")
 
         # Rincian per hari hanya berguna kalau lintasannya lebih dari satu

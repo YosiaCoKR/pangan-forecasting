@@ -39,3 +39,18 @@ assert tabel["Perubahan"].iloc[-1] == f"{hasil.persen_perubahan:+.2f}%"
 assert tabel["Harga"].iloc[-1] == "Rp 9.900"
 
 print("ok rincian harian")
+
+# --- ambang EWS dalam Rupiah (yang tampil di panel prediksi & grafik) ---
+import config
+import ews
+
+_ambang = {}
+config.get_ambang_ews = lambda slug: _ambang
+_ambang.update(harga_tetap=None, persen_kenaikan=10.0)
+batas, keterangan = ews.ambang_rupiah("x", 15_000.0)
+assert round(batas) == 16_500 and "10%" in keterangan
+_ambang.update(harga_tetap=16_000.0)  # dua-duanya disetel -> yang lebih rendah
+assert ews.ambang_rupiah("x", 15_000.0) == (16_000.0, "batas harga tetap")
+_ambang.update(harga_tetap=None, persen_kenaikan=None)
+assert ews.ambang_rupiah("x", 15_000.0) is None
+print("ok ambang rupiah")
