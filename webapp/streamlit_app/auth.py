@@ -13,14 +13,14 @@ server di-restart.
 Id sesi SENGAJA TIDAK pernah masuk URL. Versi sebelumnya menitipkannya di
 `st.query_params` (`?sid=...`) supaya sesi tahan refresh browser, tapi itu
 membuat URL setara kata sandi: ikut tersimpan di riwayat browser, ikut
-ter-screenshot, dan ikut terkirim kalau URL-nya dibagikan. Untuk panel yang
-bisa mengubah harga & model, harga kenyamanan itu terlalu mahal. Konsekuensi
-yang diterima: refresh halaman (F5) berarti login ulang. Pindah halaman lewat
-menu TIDAK memutus sesi, karena navigasi `st.Page` tidak memuat ulang browser.
+ter-screenshot, dan ikut terkirim kalau URL-nya dibagikan.
 
-Kalau nanti sesi perlu tahan refresh, jalur yang benar adalah cookie HttpOnly
-+ Secure + SameSite=Strict (butuh komponen cookie manager atau reverse proxy
-auth) — BUKAN mengembalikan id sesi ke URL.
+Supaya refresh halaman (F5) TIDAK memaksa login ulang, id sesi dititipkan di
+cookie `_COOKIE_SESI` (SameSite=Strict, Secure di https): `st.session_state`
+hilang saat refresh, cookie tidak, jadi `admin_sudah_masuk()` memulihkan sesi
+dari cookie selama sesinya masih hidup di server. Cookie cuma pembawa id —
+batas 15 menit idle & 8 jam tetap diputuskan server, dan logout mematikan
+sesinya di server sehingga cookie yang tersisa tidak berguna.
 
 Kredensial dibaca dari environment variable `ADMIN_USERNAME`/`ADMIN_PASSWORD`.
 Di Streamlit Community Cloud, isi keduanya di Settings > Secrets sebagai kunci
@@ -51,6 +51,7 @@ from db import catat_aktivitas_admin
 load_dotenv(Path(__file__).parent / ".env")
 
 _SESI_ID_KEY = "admin_sesi_id"
+_COOKIE_SESI = "ppj_admin_sesi"
 _SESI_BERAKHIR_KEY = "admin_sesi_berakhir"  # penanda pesan "sesi habis" di halaman login
 _TIMEOUT_IDLE = 15 * 60  # detik tanpa aktivitas sebelum sesi gugur
 _TIMEOUT_ABSOLUT = 8 * 60 * 60  # umur maksimum sesi sejak login, walau terus aktif
@@ -114,14 +115,40 @@ def _sesi_masih_hidup(
 
 def admin_sudah_masuk() -> bool:
     """Gerbang tunggal status admin — sekaligus memperpanjang masa aktif sesi."""
-    id_sesi = st.session_state.get(_SESI_ID_KEY)
+    id_tab = st.session_state.get(_SESI_ID_KEY)
+    # Tab baru / habis refresh: session_state kosong, pulihkan dari cookie.
+    id_sesi = id_tab or st.context.cookies.get(_COOKIE_SESI)
     if not id_sesi:
         return False
     if not _sesi_masih_hidup(_sesi_aktif(), id_sesi, time.time()):
-        st.session_state.pop(_SESI_ID_KEY, None)
-        st.session_state[_SESI_BERAKHIR_KEY] = True
+        # Pesan "sesi habis" hanya untuk tab yang tadinya memang masuk —
+        # cookie basi di kunjungan baru cukup diabaikan.
+        if st.session_state.pop(_SESI_ID_KEY, None):
+            st.session_state[_SESI_BERAKHIR_KEY] = True
         return False
+    st.session_state[_SESI_ID_KEY] = id_sesi
     return True
+
+
+def _tulis_cookie_sesi() -> None:
+    """Titipkan id sesi ke cookie browser supaya sesi tahan refresh.
+
+    `st.context.cookies` berisi cookie saat halaman dimuat, jadi skrip ini
+    hanya dikirim sampai refresh berikutnya (setelah itu cookie sudah ada).
+    """
+    id_sesi = st.session_state.get(_SESI_ID_KEY)
+    if not id_sesi or st.context.cookies.get(_COOKIE_SESI) == id_sesi:
+        return
+    # ponytail: cookie ditulis lewat JS, jadi tidak bisa HttpOnly (Streamlit
+    # belum punya API set-cookie). Kalau app ini kelak merender HTML dari
+    # input pengguna, pindahkan ke reverse proxy auth dengan cookie HttpOnly.
+    # Aman dari injeksi: id_sesi dibuat server (token_urlsafe: A-Z a-z 0-9 _ -).
+    st.html(
+        f"<script>document.cookie='{_COOKIE_SESI}={id_sesi}; path=/; "
+        f"max-age={_TIMEOUT_ABSOLUT}; SameSite=Strict'"
+        "+(location.protocol==='https:'?'; Secure':'')</script>",
+        unsafe_allow_javascript=True,
+    )
 
 
 def masuk_sebagai_admin() -> None:
@@ -208,8 +235,10 @@ def tombol_logout() -> None:
     """Tombol keluar admin — dipasang di tiap halaman kerja admin (Input
     Harga, Pengaturan Model, Pengaturan Ambang), bukan cuma di hub Panel
     Admin, supaya admin bisa logout dari halaman manapun tanpa harus
-    navigasi balik ke hub dulu.
+    navigasi balik ke hub dulu. Karena ada di semua halaman admin, di sini
+    juga cookie sesi dititipkan ke browser.
     """
+    _tulis_cookie_sesi()
     st.markdown('<div class="ppj-spacer-sm"></div>', unsafe_allow_html=True)
     if st.button("Kunci Panel Admin"):
         keluar_dari_admin()
