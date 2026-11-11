@@ -9,7 +9,7 @@ Tidak melatih ulang model apa pun, hanya menyimpan nilai ambang ke
 from __future__ import annotations
 
 import streamlit as st
-from auth import require_admin, sesi_admin_saat_ini, tombol_logout
+from auth import admin_sudah_masuk, require_admin, sesi_admin_saat_ini, tombol_logout
 from config import AMBANG_EWS_DEFAULT, get_ambang_ews, reset_ambang_ews, set_ambang_ews
 from data.mock_commodities import get_komoditas_list
 from db import catat_aktivitas_admin
@@ -38,6 +38,10 @@ def _reset_ambang(slug: str, nama: str, kunci_persen: str, kunci_harga: str) -> 
     menghapus key-nya tidak cukup: browser tetap menampilkan angka lama
     (mis. 14.900) walau ambang yang tersimpan sudah kembali ke default.
     """
+    # Callback jalan sebelum `require_admin()` di badan skrip, jadi sesi yang
+    # sudah habis (idle 15 menit) harus ditolak di sini juga.
+    if not admin_sudah_masuk():
+        return
     reset_ambang_ews(slug)
     catat_aktivitas_admin(
         "ambang_diubah", sesi_admin_saat_ini(), detail=f"{nama}: direset ke default"
