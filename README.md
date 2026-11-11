@@ -58,6 +58,8 @@ Setelah login di **Panel Admin**, buka halaman **Unggah Dataset** dan unggah ber
 - Harga boleh dalam ribuan rupiah seperti dataset (`10.400`) atau rupiah penuh (`10400`); nilai di bawah 1000 dianggap ribuan.
 - Sel kosong dilewati. Berkas yang berisi tanggal salah format atau harga bukan angka/≤ 0 ditolak seluruhnya.
 
+Tabel unduhan "Tabel Harga Berdasarkan Daerah" (bentuk lebar: satu baris per komoditas, satu kolom per tanggal `DD/ MM/ YYYY`, harga bertulis `16,450`) juga bisa diunggah langsung tanpa diubah; komoditas di luar dataset diabaikan.
+
 Setiap unggahan tercatat di **Audit Log**.
 
 ## 📁 Project Structure

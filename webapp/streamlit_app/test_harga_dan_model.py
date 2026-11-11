@@ -168,6 +168,19 @@ xlsx.name = "Harga.XLSX"
 harga_xlsx, _ = mock_prices.baca_csv_harga(xlsx)
 assert harga_xlsx[slug_a].tolist() == [13_500.0, 14_000.0]
 assert list(harga_xlsx[slug_a].index) == list(harga_csv[slug_a].index)
+# Tabel unduhan bentuk LEBAR (baris = komoditas, kolom = tanggal DD/ MM/ YYYY).
+lebar = (
+    "No,Komoditas (Rp),"
+    f"{tanggal_baru:%d/ %m/ %Y},{tanggal_csv_baru:%d/ %m/ %Y}\n"
+    'I,Beras,"16,450","16,500"\n'
+    f'1,{nama_a} ,"13,500","14,000"\n'  # spasi di ujung nama, seperti unduhan asli
+    f"2,{nama_b},-,-\n"
+)
+harga_lebar, diabaikan_lebar = mock_prices.baca_csv_harga(io.StringIO(lebar))
+assert diabaikan_lebar == ["Beras"]
+assert set(harga_lebar) == {slug_a}, "baris berisi `-` tidak boleh ikut"
+assert harga_lebar[slug_a].tolist() == [13_500.0, 14_000.0]
+assert list(harga_lebar[slug_a].index) == list(harga_csv[slug_a].index)
 print("ok unggah csv")
 
 # --- harga hasil input admin benar-benar mengubah prediksi ---

@@ -276,11 +276,35 @@ def simpan_harga_banyak(harga_per_slug: dict[str, pd.Series]) -> dict[str, tuple
     return hasil
 
 
+def _lebar_ke_panjang(df: pd.DataFrame) -> pd.DataFrame:
+    """Ubah tabel UNDUHAN harga (bentuk lebar) ke bentuk dataset riset.
+
+    Unduhan "Tabel Harga Berdasarkan Daerah" berisi satu BARIS per komoditas
+    (kolom `No`, `Komoditas (Rp)`) dan satu KOLOM per tanggal (`03/ 11/ 2026`,
+    hari/bulan/tahun), dengan harga bertulis `16,450` dan `-` untuk kosong.
+    Dibalik jadi kolom `tanggal` + satu kolom per komoditas; tabel yang sudah
+    berbentuk dataset riset dikembalikan apa adanya.
+    """
+    kolom_nama = next((k for k in df.columns if k.lower().startswith("komoditas")), None)
+    if "tanggal" in df.columns or kolom_nama is None:
+        return df
+
+    lebar = df.drop(columns=[k for k in df.columns if k.lower() == "no"]).set_index(kolom_nama)
+    lebar.index = lebar.index.astype(str).str.strip()
+    tanggal = pd.to_datetime(lebar.columns.str.replace(" ", ""), format="%d/%m/%Y", errors="coerce")
+    panjang = lebar.T.reset_index(drop=True).apply(
+        lambda kolom: kolom.astype(str).str.replace(",", "").str.strip().replace({"-": None, "": None, "nan": None})
+    )
+    panjang.insert(0, "tanggal", tanggal)
+    return panjang
+
+
 def baca_csv_harga(berkas) -> tuple[dict[str, pd.Series], list[str]]:
     """Baca CSV/XLSX (sheet pertama) unggahan admin jadi `{slug: Series harga Rupiah}` siap di-upsert.
 
     Format = format dataset riset: kolom `tanggal` (YYYY-MM-DD) + satu kolom
-    per NAMA komoditas. Sel kosong dilewati (tidak mengubah apa pun). Kolom
+    per NAMA komoditas — atau tabel unduhan bentuk lebar, lihat
+    `_lebar_ke_panjang`. Sel kosong dilewati (tidak mengubah apa pun). Kolom
     yang bukan komoditas dikembalikan sebagai daftar kedua supaya admin tahu
     apa yang diabaikan. Isi yang tidak sah -> `ValueError` berisi alasannya;
     tidak ada yang disimpan separuh.
@@ -292,8 +316,9 @@ def baca_csv_harga(berkas) -> tuple[dict[str, pd.Series], list[str]]:
     except Exception as exc:
         raise ValueError(f"berkas bukan CSV/XLSX yang bisa dibaca ({exc})") from exc
     df.columns = df.columns.astype(str).str.strip()
+    df = _lebar_ke_panjang(df)
     if "tanggal" not in df.columns:
-        raise ValueError("kolom `tanggal` tidak ada")
+        raise ValueError("kolom `tanggal` tidak ada (dan bukan tabel unduhan berkolom `Komoditas (Rp)`)")
 
     # Sel tanggal Excel sudah bertipe tanggal (lolos apa adanya); teks wajib
     # YYYY-MM-DD supaya 03/04 tidak ditebak-tebak hari/bulannya.
@@ -303,7 +328,7 @@ def baca_csv_harga(berkas) -> tuple[dict[str, pd.Series], list[str]]:
         else pd.to_datetime(str(t).strip(), format="%Y-%m-%d", errors="coerce")
     )
     if tanggal.isna().any():
-        raise ValueError(f"{int(tanggal.isna().sum())} baris tanggalnya bukan format YYYY-MM-DD")
+        raise ValueError(f"{int(tanggal.isna().sum())} tanggal tidak terbaca (pakai YYYY-MM-DD, atau DD/MM/YYYY di tabel unduhan)")
     if (tanggal > pd.Timestamp.today().normalize()).any():
         raise ValueError("ada tanggal di masa depan")
     df = df.assign(tanggal=tanggal).drop_duplicates("tanggal", keep="last").set_index("tanggal")
