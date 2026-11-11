@@ -1,66 +1,14 @@
 """Halaman Dashboard Pangan (publik) — pilih komoditas + detailnya (grafik
-harian/mingguan/bulanan, prediksi, ambang batas), lalu kartu 9 komoditas."""
+harian/mingguan/bulanan, prediksi, ambang batas). Tidak ada lagi grid kartu:
+satu komoditas tampil besar, sisanya dipilih lewat dropdown."""
 
 from __future__ import annotations
 
 import streamlit as st
 
-from data.mock_commodities import get_kategori_list
-from data.mock_prices import KartuHarga, get_dashboard_cards, get_price_history
-from formatting import format_rupiah, format_waktu_pembaruan, tren_status
-from komponen_prediksi import panel_prediksi
+from data.mock_prices import KartuHarga, get_dashboard_cards
+from formatting import tren_status
 from views.detail_komoditas import tampilkan_detail
-
-_KELAS_TREN_KARTU = {"naik": "ppj-trend-up", "turun": "ppj-trend-down", "tetap": "ppj-trend-flat"}
-
-
-def _tren_harian(kartu: KartuHarga) -> tuple[str, str]:
-    """(kelas_css, label) panah naik/turun/tetap dibanding harga kemarin."""
-    status, label = tren_status(kartu.harga_terbaru, kartu.harga_kemarin)
-    return _KELAS_TREN_KARTU[status], label
-
-
-def _gambar_kartu(kartu: KartuHarga) -> None:
-    harga_format = format_rupiah(kartu.harga_terbaru)
-    kelas_tren, label_tren = _tren_harian(kartu)
-    slug = kartu.komoditas.slug
-
-    # Satu kartu per komoditas (info harga, prediksi, tautan detail) — dulu
-    # tiga kotak bertumpuk terpisah, yang di grid 3 kolom terbaca seperti
-    # 27 elemen lepas, bukan 9 komoditas.
-    with st.container(border=True, key=f"kartu-komoditas-{slug}"):
-        st.markdown(
-            f"""
-            <div class="ppj-card">
-                <div class="ppj-card-head">
-                    <span class="ppj-card-icon">{kartu.komoditas.ikon}</span>
-                    <h4>{kartu.komoditas.nama}</h4>
-                </div>
-                <p class="ppj-price">Rp {harga_format} <span class="ppj-unit">/ {kartu.komoditas.unit}</span></p>
-                <div class="ppj-card-meta">
-                    <span class="{kelas_tren}">{label_tren} dari kemarin</span>
-                    <p class="ppj-updated">{format_waktu_pembaruan(kartu.diperbarui_pada)}</p>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        # Komponen prediksi bersama (sama dengan Detail Komoditas) — dipasang
-        # langsung di kartu supaya horizon 1/7/30 hari bisa diramal tanpa perlu
-        # pindah halaman dulu.
-        riwayat = get_price_history(slug, hari=90)
-        panel_prediksi(slug, riwayat, kartu.komoditas.nama)
-
-        if st.button(
-            "Lihat grafik & detail",
-            key=f"detail-{slug}",
-            type="tertiary",
-            icon=":material/arrow_forward:",
-            icon_position="right",
-        ):
-            st.session_state["komoditas_dipilih"] = slug
-            st.switch_page("views/detail_komoditas.py")
 
 
 def _gambar_hero(kartu_list: list[KartuHarga]) -> None:
@@ -87,10 +35,9 @@ def _gambar_hero(kartu_list: list[KartuHarga]) -> None:
     )
 
 
-def tampilkan_grid_dashboard() -> None:
+def tampilkan_dashboard() -> None:
     kartu_list = get_dashboard_cards()
     _gambar_hero(kartu_list)
-    kolom_per_baris = 3
 
     if not kartu_list:
         # Pertahanan tampilan kalau daftar komoditas/harga kosong (mis. data
@@ -111,22 +58,6 @@ def tampilkan_grid_dashboard() -> None:
     nama_awal = next((n for n, s in slug_per_nama.items() if s == slug_awal), nama_list[0])
     nama_terpilih = st.selectbox("Pilih komoditas", options=nama_list, index=nama_list.index(nama_awal))
     st.session_state["komoditas_dipilih"] = slug_per_nama[nama_terpilih]
-    tampilkan_detail(slug_per_nama[nama_terpilih], di_dashboard=True)
+    tampilkan_detail(slug_per_nama[nama_terpilih])
 
-    st.divider()
-    st.markdown("### Semua Komoditas")
-    for kunci_kategori, label_kategori in get_kategori_list():
-        kelompok = [k for k in kartu_list if k.komoditas.kategori == kunci_kategori]
-        if not kelompok:
-            continue
-
-        st.markdown(f"#### {label_kategori}")
-        for awal in range(0, len(kelompok), kolom_per_baris):
-            kolom = st.columns(kolom_per_baris, gap="medium")
-            for kolom_slot, kartu in zip(kolom, kelompok[awal : awal + kolom_per_baris]):
-                with kolom_slot:
-                    _gambar_kartu(kartu)
-        st.markdown('<div class="ppj-spacer-md"></div>', unsafe_allow_html=True)
-
-
-tampilkan_grid_dashboard()
+tampilkan_dashboard()

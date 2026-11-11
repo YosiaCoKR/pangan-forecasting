@@ -43,13 +43,6 @@ def main() -> None:
         title="Data Historis",
         icon=":material/show_chart:",
     )
-    detail_komoditas_page = st.Page(
-        "views/detail_komoditas.py",
-        title="Detail Komoditas",
-        icon=":material/search:",
-        url_path="detail-komoditas",
-        visibility="hidden",
-    )
     performa_model_page = st.Page(
         "views/performa_model.py",
         title="Performa Model",
@@ -109,7 +102,6 @@ def main() -> None:
             "Menu": [
                 dashboard_page,
                 historis_page,
-                detail_komoditas_page,
                 performa_model_page,
             ],
             "Admin": [

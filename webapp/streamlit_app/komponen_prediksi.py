@@ -100,8 +100,13 @@ def panel_prediksi(
         if ambang:
             batas, keterangan = ambang
             lewat = hasil.harga_prediksi >= batas
-            st.markdown(
-                f"Ambang batas: **Rp {format_rupiah(batas)}** ({keterangan})  \n"
+            st.metric(
+                label="Ambang batas peringatan",
+                value=f"Rp {format_rupiah(batas)}",
+                help="Disetel admin di Pengaturan Ambang. Prediksi yang menyentuh angka ini memicu peringatan dini.",
+            )
+            st.caption(
+                f"{keterangan.capitalize()}. "
                 + ("⚠️ Prediksi ini **melewati** ambang." if lewat else "✅ Prediksi ini masih di bawah ambang.")
             )
         st.caption(f"Dihitung dengan model **{hasil.model_dipakai}**.")

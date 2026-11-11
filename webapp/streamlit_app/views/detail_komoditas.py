@@ -1,12 +1,11 @@
-"""Tampilan detail komoditas: hero info harga, grafik historis + garis prediksi.
+"""Komponen detail komoditas untuk Dashboard: hero harga, grafik
+harian/mingguan/bulanan + garis prediksi & ambang batas, panel prediksi, dan
+peringatan dini (banner + pop-up).
 
-Prediksi memakai model riset asli lewat `forecast.ramalkan_hasil_horizon`
-(LightGBM hasil tuning, log + differencing, tanpa pelatihan ulang) — bukan lagi
-`data.mock_prices.get_mock_prediction`. Panel kontrol prediksi (horizon
-picker, tombol, hasil) ada di `komponen_prediksi.panel_prediksi` — komponen
-bersama supaya halaman lain yang butuh kontrol serupa tak perlu duplikasi.
-Anotasi ambang batas & pop-up peringatan dini ditambahkan pada task
-tersendiri — di sini fokus pada grafik (riwayat + garis prediksi).
+Dulu halaman tersendiri; sekarang hanya di-import `views/dashboard.py` lewat
+`tampilkan_detail`. Prediksi memakai model riset asli lewat
+`forecast.ramalkan_hasil_horizon`; panel kontrolnya ada di
+`komponen_prediksi.panel_prediksi`.
 """
 
 from __future__ import annotations
@@ -33,7 +32,7 @@ _KELAS_TREN_HERO = {
 # Harian apa adanya; Mingguan/Bulanan = RATA-RATA harga per minggu/bulan.
 TAMPILAN_GRAFIK = {
     "Harian": (90, None, "%d %b"),
-    "Mingguan": (365, "W", "%d %b %y"),
+    "Mingguan": (365, "W-MON", "%d %b %y"),
     "Bulanan": (10**6, "MS", "%b %Y"),
 }
 
@@ -43,7 +42,16 @@ def _riwayat_tampilan(slug: str, tampilan: str) -> tuple[pd.DataFrame, str]:
     hari, aturan, format_tanggal = TAMPILAN_GRAFIK[tampilan]
     riwayat = get_price_history(slug, hari=hari)
     if aturan and not riwayat.empty:
-        riwayat = riwayat.set_index("tanggal")["harga"].resample(aturan).mean().dropna().reset_index()
+        # Titik dilabeli tanggal AWAL periode (Senin / tanggal 1). Label bawaan
+        # pandas untuk mingguan adalah AKHIR minggu, yang untuk minggu berjalan
+        # jatuh di masa depan.
+        riwayat = (
+            riwayat.set_index("tanggal")["harga"]
+            .resample(aturan, label="left", closed="left")
+            .mean()
+            .dropna()
+            .reset_index()
+        )
     return riwayat, format_tanggal
 
 
@@ -56,6 +64,7 @@ def _gambar_chart(
     garis_ambang: float | None = None,
     format_tanggal: str = "%d %b",
 ) -> None:
+    tinggi = 540  # satu-satunya grafik di Dashboard, jadi dibuat besar
     if riwayat.empty:
         # Sama seperti historis.py — riwayat kosong (mis. komoditas baru
         # tanpa data harga sama sekali) tetap dapat placeholder rapi,
@@ -69,12 +78,13 @@ def _gambar_chart(
     ada_prediksi = hari_ke_depan is not None and hasil is not None
 
     if not ada_prediksi:
-        gambar_grafik_harga(riwayat, unit, format_tanggal=format_tanggal)
+        gambar_grafik_harga(riwayat, unit, height=tinggi, format_tanggal=format_tanggal)
         return
 
     gambar_grafik_harga(
         riwayat,
         unit,
+        height=tinggi,
         trajektori_prediksi=hasil.trajektori,
         prediksi_label=f"Prediksi {hari_ke_depan} hari",
         prediksi_persen=hasil.persen_perubahan,
@@ -102,7 +112,7 @@ def _gambar_hero(slug: str) -> None:
                 <span class="ppj-hero-detail-icon">{komoditas.ikon}</span>
                 <div>
                     <h1>{komoditas.nama}</h1>
-                    <p>Grafik pergerakan harga 90 hari terakhir.</p>
+                    <p>Pergerakan harga, prediksi, dan ambang batas peringatan.</p>
                 </div>
             </div>
             <div class="ppj-hero-detail-price">
@@ -157,20 +167,15 @@ def _gambar_peringatan(slug: str, riwayat: pd.DataFrame, nama_komoditas: str) ->
     return True
 
 
-def tampilkan_detail(slug: str, *, di_dashboard: bool = False) -> None:
-    """Detail satu komoditas. `di_dashboard=True` saat dipasang langsung di
-    Dashboard: tanpa tombol kembali, dan kunci widget dibedakan supaya tidak
-    bentrok dengan panel prediksi di kartu komoditas yang sama."""
+def tampilkan_detail(slug: str) -> None:
+    """Detail satu komoditas — dipasang langsung di Dashboard (modul ini bukan
+    halaman tersendiri lagi)."""
     komoditas = get_komoditas_by_slug(slug)
     if komoditas is None:
         st.error("Komoditas tidak ditemukan.")
         return
 
-    awalan = f"dash-{slug}" if di_dashboard else slug
-    if not di_dashboard and st.button("← Kembali ke Dashboard"):
-        st.session_state.pop("komoditas_dipilih", None)
-        st.switch_page("views/dashboard.py")
-
+    awalan = slug
     _gambar_hero(slug)
 
     riwayat = get_price_history(slug, hari=90)
@@ -217,16 +222,3 @@ def tampilkan_detail(slug: str, *, di_dashboard: bool = False) -> None:
     if st.button("📊 Lihat performa model prediksi", width="stretch", key=f"performa-{awalan}"):
         st.session_state["komoditas_dipilih"] = slug
         st.switch_page("views/performa_model.py")
-
-
-# Halaman ini juga di-import Dashboard untuk `tampilkan_detail`; bagian di
-# bawah hanya jalan saat dibuka sebagai halaman (Streamlit menjalankannya
-# sebagai `__main__`).
-if __name__ == "__main__":
-    _slug_terpilih = st.session_state.get("komoditas_dipilih")
-    if _slug_terpilih:
-        tampilkan_detail(_slug_terpilih)
-    else:
-        st.warning("Komoditas belum dipilih.")
-        if st.button("← Kembali ke Dashboard"):
-            st.switch_page("views/dashboard.py")
