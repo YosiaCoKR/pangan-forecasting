@@ -277,7 +277,7 @@ def simpan_harga_banyak(harga_per_slug: dict[str, pd.Series]) -> dict[str, tuple
 
 
 def baca_csv_harga(berkas) -> tuple[dict[str, pd.Series], list[str]]:
-    """Baca CSV unggahan admin jadi `{slug: Series harga Rupiah}` siap di-upsert.
+    """Baca CSV/XLSX (sheet pertama) unggahan admin jadi `{slug: Series harga Rupiah}` siap di-upsert.
 
     Format = format dataset riset: kolom `tanggal` (YYYY-MM-DD) + satu kolom
     per NAMA komoditas. Sel kosong dilewati (tidak mengubah apa pun). Kolom
@@ -286,14 +286,22 @@ def baca_csv_harga(berkas) -> tuple[dict[str, pd.Series], list[str]]:
     tidak ada yang disimpan separuh.
     """
     try:
-        df = pd.read_csv(berkas)
+        # Jenis berkas dari NAMA unggahan (`UploadedFile.name`); tanpa nama = CSV.
+        excel = str(getattr(berkas, "name", "")).lower().endswith(".xlsx")
+        df = pd.read_excel(berkas) if excel else pd.read_csv(berkas)
     except Exception as exc:
-        raise ValueError(f"berkas bukan CSV yang bisa dibaca ({exc})") from exc
-    df.columns = df.columns.str.strip()
+        raise ValueError(f"berkas bukan CSV/XLSX yang bisa dibaca ({exc})") from exc
+    df.columns = df.columns.astype(str).str.strip()
     if "tanggal" not in df.columns:
         raise ValueError("kolom `tanggal` tidak ada")
 
-    tanggal = pd.to_datetime(df["tanggal"], format="%Y-%m-%d", errors="coerce")
+    # Sel tanggal Excel sudah bertipe tanggal (lolos apa adanya); teks wajib
+    # YYYY-MM-DD supaya 03/04 tidak ditebak-tebak hari/bulannya.
+    tanggal = df["tanggal"].map(
+        lambda t: pd.Timestamp(t).normalize()
+        if hasattr(t, "year")
+        else pd.to_datetime(str(t).strip(), format="%Y-%m-%d", errors="coerce")
+    )
     if tanggal.isna().any():
         raise ValueError(f"{int(tanggal.isna().sum())} baris tanggalnya bukan format YYYY-MM-DD")
     if (tanggal > pd.Timestamp.today().normalize()).any():

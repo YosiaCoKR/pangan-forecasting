@@ -158,6 +158,16 @@ for csv_rusak in (
         pass
     else:
         raise AssertionError(f"CSV rusak lolos: {csv_rusak!r}")
+# XLSX: sel tanggal asli Excel + tanggal teks, hasilnya harus sama dengan CSV.
+xlsx = io.BytesIO()
+pd.DataFrame(
+    {"tanggal": [pd.Timestamp(tanggal_baru), str(tanggal_csv_baru)], nama_a: [13.5, 14000]}
+).to_excel(xlsx, index=False)
+xlsx.seek(0)
+xlsx.name = "Harga.XLSX"
+harga_xlsx, _ = mock_prices.baca_csv_harga(xlsx)
+assert harga_xlsx[slug_a].tolist() == [13_500.0, 14_000.0]
+assert list(harga_xlsx[slug_a].index) == list(harga_csv[slug_a].index)
 print("ok unggah csv")
 
 # --- harga hasil input admin benar-benar mengubah prediksi ---
