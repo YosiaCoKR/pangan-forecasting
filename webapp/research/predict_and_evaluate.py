@@ -12,7 +12,7 @@ from sklearn.metrics import (
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-ACTUALS_PATH = BASE_DIR / "data_aktual.csv"
+ACTUALS_PATH = BASE_DIR / "data_aktual_cleaned.csv"
 HORIZONS = (1, 7, 30)
 MODEL_SPECS = (
     ("LightGBM default", "final_lgbm_default"),
