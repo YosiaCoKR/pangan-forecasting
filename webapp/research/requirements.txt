@@ -8,6 +8,7 @@ scikit-learn
 statsmodels
 feature_engine
 skforecast
+utilsforecast
 lightgbm
 xgboost
 pygad
