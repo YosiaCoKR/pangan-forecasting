@@ -34,10 +34,10 @@ assert _pin(_sini / "requirements.txt") == _pin(_sini.parents[1] / "requirements
 from data.mock_commodities import get_komoditas_list
 from data.mock_prices import get_price_history
 
-# 1. App harus membaca dataset yang dipakai melatih artefak Okt-2026.
-assert forecast.DATASET_PATH.name == "DATASET-BERAS-NEW.csv", (
+# 1. App harus membaca dataset yang dipakai melatih artefak branch 3-agt (code.ipynb).
+assert forecast.DATASET_PATH.name == "dataset.csv", (
     f"App membaca {forecast.DATASET_PATH.name}, padahal artefak di "
-    f"{forecast.MODEL_TERSEDIA['lightgbm'].folder}/ dilatih dengan DATASET-BERAS-NEW.csv"
+    f"{forecast.MODEL_TERSEDIA['lightgbm'].folder}/ dilatih dengan dataset.csv"
 )
 assert forecast.DATASET_PATH.exists(), f"Dataset tidak ada: {forecast.DATASET_PATH}"
 

@@ -49,10 +49,10 @@ from skforecast.utils import load_forecaster
 RESEARCH_DIR = Path(__file__).resolve().parent.parent / "research"
 
 # Dataset riset yang dipakai melatih artefak di `final_lgbm/`/`final_xgb/`
-# (lihat `code_run_all_new.ipynb`). Satu-satunya tempat nama berkasnya
+# (lihat `code.ipynb`). Satu-satunya tempat nama berkasnya
 # ditulis: `data.mock_prices` & `data.mock_commodities` ikut dari sini, jadi
 # ganti dataset + latih ulang notebook cukup mengubah baris ini.
-DATASET_PATH = RESEARCH_DIR / "DATASET-BERAS-NEW.csv"
+DATASET_PATH = RESEARCH_DIR / "dataset.csv"
 
 HORIZON_TERSEDIA: tuple[int, ...] = (1, 7, 30)
 
