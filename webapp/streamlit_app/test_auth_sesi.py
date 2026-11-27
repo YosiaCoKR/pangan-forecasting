@@ -59,8 +59,12 @@ assert "st.query_params" not in kode_auth.replace(auth.__doc__ or "", ""), (
 
 # Sesi tahan refresh lewat sessionStorage tab; id dari browser hanya boleh
 # diterima kalau masih terdaftar di server.
-assert "sessionStorage.setItem" in kode_auth, "id sesi harus dititipkan ke sessionStorage"
-assert "hasil.sid in _sesi_aktif()" in kode_auth, "id dari browser harus dicek ke daftar sesi server"
+assert "sessionStorage.setItem" in kode_auth, (
+    "id sesi harus dititipkan ke sessionStorage"
+)
+assert "hasil.sid in _sesi_aktif()" in kode_auth, (
+    "id dari browser harus dicek ke daftar sesi server"
+)
 
 id_sesi = auth.secrets.token_urlsafe(32)
 assert len(id_sesi) >= 22, "id sesi terlalu pendek"
@@ -69,7 +73,9 @@ assert len(id_sesi) >= 22, "id sesi terlalu pendek"
 # pembaca tabel log bisa membajak sesi admin yang masih hidup.
 kode = auth._kode_audit(id_sesi)
 assert kode != id_sesi and kode not in id_sesi, "id sesi tidak boleh bocor ke log audit"
-assert len(kode) == 12 and auth._kode_audit(id_sesi) == kode, "kode audit harus pendek & stabil"
+assert len(kode) == 12 and auth._kode_audit(id_sesi) == kode, (
+    "kode audit harus pendek & stabil"
+)
 
 # --- tidak ada kredensial default -------------------------------------------
 # Deploy yang lupa mengisi secrets harus GAGAL TERTUTUP, bukan terbuka dengan
@@ -80,13 +86,19 @@ try:
         os.environ.pop(k, None)
     assert auth.username_admin() == "", "tidak boleh ada username default"
     assert auth.kata_sandi_admin() == "", "tidak boleh ada kata sandi default"
-    assert not auth.admin_dikonfigurasi(), "tanpa env var, admin harus dianggap belum siap"
-    assert not auth.login("admin", "admin123"), "kredensial lama admin/admin123 harus ditolak"
+    assert not auth.admin_dikonfigurasi(), (
+        "tanpa env var, admin harus dianggap belum siap"
+    )
+    assert not auth.login("admin", "admin123"), (
+        "kredensial lama admin/admin123 harus ditolak"
+    )
     assert not auth.login("", ""), "kredensial kosong harus ditolak"
 finally:
     for k, v in asli.items():
         if v is not None:
             os.environ[k] = v
 
-print("OK — sesi admin: idle 15 menit bergulir, umur maks 8 jam, id sesi tidak "
-      "masuk URL/log, tanpa kredensial default")
+print(
+    "OK — sesi admin: idle 15 menit bergulir, umur maks 8 jam, id sesi tidak "
+    "masuk URL/log, tanpa kredensial default"
+)

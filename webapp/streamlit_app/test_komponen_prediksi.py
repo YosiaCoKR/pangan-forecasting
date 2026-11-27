@@ -18,7 +18,9 @@ trajektori = pd.Series(
 hasil = forecast.HasilPeramalan(
     harga_sekarang=harga_sekarang,
     harga_prediksi=float(trajektori.iloc[-1]),
-    persen_perubahan=(float(trajektori.iloc[-1]) - harga_sekarang) / harga_sekarang * 100,
+    persen_perubahan=(float(trajektori.iloc[-1]) - harga_sekarang)
+    / harga_sekarang
+    * 100,
     model_dipakai="uji",
     trajektori=trajektori,
 )

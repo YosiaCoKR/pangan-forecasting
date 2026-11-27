@@ -13,13 +13,13 @@ di sini yang dicek: berkas datasetnya benar, kolomnya cocok dengan nama
 artefak, dan SEMUA komoditas x horizon benar-benar bisa diramalkan.
 """
 
-import pandas as pd
-
-import forecast
-
 # Streamlit Cloud memakai requirements.txt yang SEFOLDER app.py, bukan root —
 # pin yang cuma ditambah di salah satunya tidak ikut terpasang saat deploy.
 from pathlib import Path
+
+import pandas as pd
+
+import forecast
 
 
 def _pin(berkas: Path) -> set[str]:
@@ -28,9 +28,9 @@ def _pin(berkas: Path) -> set[str]:
 
 
 _sini = Path(__file__).resolve().parent
-assert _pin(_sini / "requirements.txt") == _pin(_sini.parents[1] / "requirements.txt"), (
-    "requirements.txt root dan webapp/streamlit_app/ tidak sama"
-)
+assert _pin(_sini / "requirements.txt") == _pin(
+    _sini.parents[1] / "requirements.txt"
+), "requirements.txt root dan webapp/streamlit_app/ tidak sama"
 from data.mock_commodities import get_komoditas_list
 from data.mock_prices import get_price_history
 
@@ -82,5 +82,7 @@ for kunci_model in forecast.MODEL_TERSEDIA:
             )
             diperiksa += 1
 
-print(f"OK — dataset {forecast.DATASET_PATH.name}, {len(komoditas)} komoditas, "
-      f"{diperiksa} prediksi (model x komoditas x horizon) lolos.")
+print(
+    f"OK — dataset {forecast.DATASET_PATH.name}, {len(komoditas)} komoditas, "
+    f"{diperiksa} prediksi (model x komoditas x horizon) lolos."
+)

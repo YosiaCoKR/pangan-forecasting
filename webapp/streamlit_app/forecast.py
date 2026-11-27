@@ -40,11 +40,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import config
 import numpy as np
 import pandas as pd
 import streamlit as st
 from skforecast.utils import load_forecaster
+
+import config
 
 RESEARCH_DIR = Path(__file__).resolve().parent.parent / "research"
 
@@ -73,7 +74,11 @@ class InfoModel:
     prefix: str
 
     def path_artefak(self, nama_komoditas: str, horizon: int) -> Path:
-        return RESEARCH_DIR / self.folder / f"{self.prefix}_{nama_komoditas}_h{horizon}.joblib"
+        return (
+            RESEARCH_DIR
+            / self.folder
+            / f"{self.prefix}_{nama_komoditas}_h{horizon}.joblib"
+        )
 
 
 MODEL_TERSEDIA: dict[str, InfoModel] = {
@@ -111,6 +116,7 @@ def model_aktif(nama_komoditas: str | None = None) -> InfoModel:
     kunci = config.get_model_komoditas(nama_komoditas) if nama_komoditas else None
     kunci = kunci or config.get_model_aktif() or MODEL_DEFAULT
     return MODEL_TERSEDIA.get(kunci, MODEL_TERSEDIA[MODEL_DEFAULT])
+
 
 # Model riset dilatih pada harga dalam RIBUAN rupiah (nilai `13.25` di
 # DATASET-BERAS-NEW.csv = Rp 13.250/kg). Semua konversi ke/dari Rupiah aktual di

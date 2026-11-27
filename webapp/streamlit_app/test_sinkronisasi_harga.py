@@ -44,7 +44,11 @@ class _RequestsPalsu:
     RequestException = mock_prices.requests.RequestException
 
     def __init__(self, respons_get, respons_put=None, lempar=None):
-        self.respons_get, self.respons_put, self.lempar = respons_get, respons_put, lempar
+        self.respons_get, self.respons_put, self.lempar = (
+            respons_get,
+            respons_put,
+            lempar,
+        )
         self.panggilan_put = None
 
     def get(self, url, **kwargs):
@@ -66,9 +70,13 @@ def _pakai_secrets(nilai):
 # --- 1. belum dikonfigurasi -> None, dan TIDAK ada panggilan HTTP sama sekali ---
 mock_prices.requests = _RequestsPalsu(_Respons(500))
 _pakai_secrets(None)
-assert mock_prices.sinkronkan_ke_github() is None, "tanpa secrets harus diam, bukan galat"
+assert mock_prices.sinkronkan_ke_github() is None, (
+    "tanpa secrets harus diam, bukan galat"
+)
 _pakai_secrets({"token": TOKEN})  # repo hilang -> tetap dianggap belum dikonfigurasi
-assert mock_prices.sinkronkan_ke_github() is None, "secrets separuh harus dianggap belum siap"
+assert mock_prices.sinkronkan_ke_github() is None, (
+    "secrets separuh harus dianggap belum siap"
+)
 print("ok belum dikonfigurasi")
 
 _pakai_secrets({"token": TOKEN, "repo": "akun/repo", "branch": "main"})
@@ -78,7 +86,9 @@ palsu = _RequestsPalsu(_Respons(200, {"sha": "sha-lama-123"}), _Respons(200))
 mock_prices.requests = palsu
 assert mock_prices.sinkronkan_ke_github() is None
 muatan = palsu.panggilan_put["json"]
-assert muatan["sha"] == "sha-lama-123", "sha blob lama tidak terkirim -> GitHub akan menolak"
+assert muatan["sha"] == "sha-lama-123", (
+    "sha blob lama tidak terkirim -> GitHub akan menolak"
+)
 assert muatan["branch"] == "main"
 assert base64.b64decode(muatan["content"]) == mock_prices._PKL_PATH.read_bytes(), (
     "isi yang dikirim bukan byte .pkl yang sama"
@@ -98,19 +108,25 @@ print("ok berkas baru")
 palsu = _RequestsPalsu(_Respons(200, {"sha": "x"}), _Respons(422, text="Unprocessable"))
 mock_prices.requests = palsu
 galat = mock_prices.sinkronkan_ke_github()
-assert isinstance(galat, str) and "422" in galat, f"commit gagal harus dilaporkan: {galat!r}"
+assert isinstance(galat, str) and "422" in galat, (
+    f"commit gagal harus dilaporkan: {galat!r}"
+)
 assert TOKEN not in galat, "TOKEN BOCOR ke pesan galat"
 
 mock_prices.requests = _RequestsPalsu(_Respons(401))
 galat = mock_prices.sinkronkan_ke_github()
-assert isinstance(galat, str) and "401" in galat, f"GET gagal harus dilaporkan: {galat!r}"
+assert isinstance(galat, str) and "401" in galat, (
+    f"GET gagal harus dilaporkan: {galat!r}"
+)
 
 palsu = _RequestsPalsu(
     _Respons(200, {"sha": "x"}), lempar=mock_prices.requests.RequestException("timeout")
 )
 mock_prices.requests = palsu
 galat = mock_prices.sinkronkan_ke_github()
-assert isinstance(galat, str) and "GitHub" in galat, f"galat jaringan harus ditangkap: {galat!r}"
+assert isinstance(galat, str) and "GitHub" in galat, (
+    f"galat jaringan harus ditangkap: {galat!r}"
+)
 assert TOKEN not in galat, "TOKEN BOCOR ke pesan galat jaringan"
 print("ok kegagalan dilaporkan tanpa membocorkan token")
 
@@ -118,11 +134,15 @@ print("ok kegagalan dilaporkan tanpa membocorkan token")
 # terbaca sama dengan "berhasil tersalin". Keduanya mengembalikan None, jadi
 # pembedanya wajib `sinkronisasi_aktif()`. ---
 _pakai_secrets(None)
-assert mock_prices.sinkronisasi_aktif() is False, "tanpa secrets harus dilaporkan TIDAK aktif"
+assert mock_prices.sinkronisasi_aktif() is False, (
+    "tanpa secrets harus dilaporkan TIDAK aktif"
+)
 _pakai_secrets({"token": TOKEN, "repo": "akun/repo"})
 assert mock_prices.sinkronisasi_aktif() is True, "dengan secrets lengkap harus aktif"
 _pakai_secrets({"token": TOKEN})
-assert mock_prices.sinkronisasi_aktif() is False, "secrets separuh harus dianggap TIDAK aktif"
+assert mock_prices.sinkronisasi_aktif() is False, (
+    "secrets separuh harus dianggap TIDAK aktif"
+)
 print("ok pembeda aktif/tidak-aktif")
 
 print("SEMUA OK")

@@ -13,8 +13,9 @@ hitung ulang di aplikasi.
 
 from __future__ import annotations
 
-import metrik_model
 import streamlit as st
+
+import metrik_model
 from data.mock_commodities import get_komoditas_list
 from formatting import format_rupiah
 
@@ -54,17 +55,16 @@ if metrik.empty:
 
 st.markdown("#### Akurasi Prediksi")
 for kolom, (_, baris) in zip(st.columns(len(metrik), gap="medium"), metrik.iterrows()):
-    with kolom:
-        with st.container(border=True):
-            st.metric(
-                LABEL_HORIZON.get(baris["horizon"], f"H+{baris['horizon']}"),
-                f"{baris['akurasi']:.2f}%",
-                help="Semakin mendekati 100%, semakin dekat prediksi dengan harga asli.",
-            )
-            st.caption(
-                f"Rata-rata meleset ± Rp {format_rupiah(baris['mae_rupiah'])}/kg  \n"
-                f"Model terbaik: **{baris['model_terbaik']}**"
-            )
+    with kolom, st.container(border=True):
+        st.metric(
+            LABEL_HORIZON.get(baris["horizon"], f"H+{baris['horizon']}"),
+            f"{baris['akurasi']:.2f}%",
+            help="Semakin mendekati 100%, semakin dekat prediksi dengan harga asli.",
+        )
+        st.caption(
+            f"Rata-rata meleset ± Rp {format_rupiah(baris['mae_rupiah'])}/kg  \n"
+            f"Model terbaik: **{baris['model_terbaik']}**"
+        )
 
 st.caption(
     "Akurasi diukur dengan menguji model pada harga sungguhan yang belum pernah dilihatnya. "

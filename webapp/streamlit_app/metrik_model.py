@@ -22,8 +22,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import forecast
 import pandas as pd
+
+import forecast
 
 METRIK_PATH = Path(__file__).parent / "data" / "metrik_model.csv"
 
@@ -43,14 +44,16 @@ def metrik_komoditas(nama_komoditas: str) -> pd.DataFrame:
     minimum per metrik, supaya satu baris tetap bercerita tentang SATU model.
     """
     df = muat_metrik()
-    df = df[df["komoditas"] == nama_komoditas].sort_values("horizon").reset_index(drop=True)
+    df = (
+        df[df["komoditas"] == nama_komoditas]
+        .sort_values("horizon")
+        .reset_index(drop=True)
+    )
     if df.empty:
         return df
 
     sufiks = df["model_terbaik"].map(_KUNCI_MODEL)
-    pilih = lambda metrik: [  # noqa: E731 - ambil metrik milik model pemenang per baris
-        df.at[i, f"{metrik}_{sufiks[i]}"] for i in df.index
-    ]
+    pilih = lambda metrik: [df.at[i, f"{metrik}_{sufiks[i]}"] for i in df.index]
     df["mape_terbaik"] = pilih("mape")
     df["akurasi"] = 100 - df["mape_terbaik"]
     df["mae_rupiah"] = [m * forecast.SKALA_HARGA for m in pilih("mae")]

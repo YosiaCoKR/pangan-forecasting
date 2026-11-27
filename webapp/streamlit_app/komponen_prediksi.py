@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import logging
 
-import ews
-import forecast
 import pandas as pd
 import streamlit as st
+
+import ews
+import forecast
 from data.mock_commodities import buat_slug
 from formatting import format_rupiah
 
@@ -23,7 +24,7 @@ def _ramalkan(
         # Kegagalan yang SUDAH diantisipasi (artefak model tidak ada, riwayat
         # kurang panjang) — placeholder rapi ditampilkan oleh pemanggil.
         return None
-    except Exception:
+    except Exception:  # noqa: BLE001 — lihat komentar di bawah
         # Kegagalan TAK terduga (bug library, data tak wajar, dll.) — jangan
         # sampai satu komoditas/horizon nge-crash seluruh halaman publik.
         # Dicatat ke log server (bukan ditampilkan ke pengguna) supaya
@@ -107,16 +108,18 @@ def panel_prediksi(
             )
             st.caption(
                 f"{keterangan.capitalize()}. "
-                + ("⚠️ Prediksi ini **melewati** ambang." if lewat else "✅ Prediksi ini masih di bawah ambang.")
+                + (
+                    "⚠️ Prediksi ini **melewati** ambang."
+                    if lewat
+                    else "✅ Prediksi ini masih di bawah ambang."
+                )
             )
         st.caption(f"Dihitung dengan model **{hasil.model_dipakai}**.")
 
         # Rincian per hari hanya berguna kalau lintasannya lebih dari satu
         # titik — untuk horizon 1 hari, metrik di atas SUDAH angka H+1.
         if len(hasil.trajektori) > 1:
-            with st.popover(
-                f"Lihat rincian {rentang_terpilih} hari", width="stretch"
-            ):
+            with st.popover(f"Lihat rincian {rentang_terpilih} hari", width="stretch"):
                 st.caption(
                     "Perubahan dihitung dari harga saat ini "
                     f"(Rp {format_rupiah(hasil.harga_sekarang)})."

@@ -10,6 +10,7 @@ ditimpa, sel kosong tidak mengubah apa pun.
 from __future__ import annotations
 
 import streamlit as st
+
 from auth import require_admin, sesi_admin_saat_ini, tombol_logout
 from data.mock_commodities import get_komoditas_list
 from data.mock_prices import (
@@ -34,14 +35,16 @@ st.markdown(
 
 nama_per_slug = {k.slug: k.nama for k in get_komoditas_list()}
 st.caption(
-    "Unggah langsung berkas unduhan \"Tabel Harga Berdasarkan Daerah\" (XLSX/CSV), "
+    'Unggah langsung berkas unduhan "Tabel Harga Berdasarkan Daerah" (XLSX/CSV), '
     "atau tabel berkolom `tanggal` + nama komoditas."
 )
 
 berkas = st.file_uploader(
     "Berkas CSV atau XLSX",
     type=["csv", "xlsx"],
-    help="Komoditas yang dibaca: " + ", ".join(nama_per_slug.values()) + ". Sel kosong dilewati.",
+    help="Komoditas yang dibaca: "
+    + ", ".join(nama_per_slug.values())
+    + ". Sel kosong dilewati.",
 )
 if berkas is not None:
     try:
@@ -51,7 +54,9 @@ if berkas is not None:
     else:
         if diabaikan:
             st.warning("Kolom diabaikan (bukan komoditas): " + ", ".join(diabaikan))
-        semua_tanggal = sorted({t for seri in harga_per_slug.values() for t in seri.index})
+        semua_tanggal = sorted(
+            {t for seri in harga_per_slug.values() for t in seri.index}
+        )
         st.info(
             f"{len(harga_per_slug)} komoditas, {len(semua_tanggal)} tanggal "
             f"({semua_tanggal[0]:%d %b %Y} – {semua_tanggal[-1]:%d %b %Y})."
@@ -91,6 +96,8 @@ if berkas is not None:
                         "jadi data akan hilang saat app restart."
                     )
                 else:
-                    st.caption("Disalin juga ke repo; commit ini memicu redeploy sebentar.")
+                    st.caption(
+                        "Disalin juga ke repo; commit ini memicu redeploy sebentar."
+                    )
 
 tombol_logout()

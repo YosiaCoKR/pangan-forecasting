@@ -9,8 +9,12 @@ import pandas as pd
 
 import forecast
 
-tanggal = pd.date_range("2025-01-01", periods=40, freq="D").delete(10)  # satu hari bolong
-riwayat = pd.DataFrame({"tanggal": tanggal, "harga": np.linspace(13000, 14000, len(tanggal))})
+tanggal = pd.date_range("2025-01-01", periods=40, freq="D").delete(
+    10
+)  # satu hari bolong
+riwayat = pd.DataFrame(
+    {"tanggal": tanggal, "harga": np.linspace(13000, 14000, len(tanggal))}
+)
 
 lw = forecast.susun_last_window(riwayat, window_size=31)
 assert len(lw) == 31 and lw.index.freqstr == "D"
@@ -45,7 +49,9 @@ except ValueError:
 # dan hasilnya BEDA — bukti pilihan model di admin benar-benar nyambung.
 _hasil = {}
 for kunci in forecast.MODEL_TERSEDIA:
-    pred = forecast.ramalkan_harga.__wrapped__(riwayat, "Beras Kualitas Medium I", 7, kunci)
+    pred = forecast.ramalkan_harga.__wrapped__(
+        riwayat, "Beras Kualitas Medium I", 7, kunci
+    )
     assert len(pred) == 7 and (pred > 0).all(), f"{kunci}: prediksi tidak wajar"
     _hasil[kunci] = pred.to_numpy()
 

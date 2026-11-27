@@ -22,5 +22,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.link_button("Buka Manual Book", MANUAL_BOOK_URL, icon=":material/menu_book:", type="primary")
+st.link_button(
+    "Buka Manual Book", MANUAL_BOOK_URL, icon=":material/menu_book:", type="primary"
+)
 st.iframe(f"https://drive.google.com/file/d/{MANUAL_BOOK_ID}/preview", height=800)

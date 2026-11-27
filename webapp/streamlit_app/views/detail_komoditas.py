@@ -135,7 +135,9 @@ def _detail_peringatan(peringatan: ews.HasilPeringatan) -> str:
 
 @st.dialog("⚠️ Peringatan Dini Harga")
 def _popup_peringatan(nama_komoditas: str, peringatan: ews.HasilPeringatan) -> None:
-    st.write(f"Harga **{nama_komoditas}** diprediksi {_detail_peringatan(peringatan)} dalam 30 hari ke depan.")
+    st.write(
+        f"Harga **{nama_komoditas}** diprediksi {_detail_peringatan(peringatan)} dalam 30 hari ke depan."
+    )
     if st.button("Tutup", width="stretch"):
         st.rerun()
 
@@ -190,13 +192,16 @@ def tampilkan_detail(slug: str) -> None:
 
     with kolom_chart:
         st.markdown("#### Grafik Harga")
-        tampilan = st.segmented_control(
-            "Tampilan grafik",
-            options=list(TAMPILAN_GRAFIK),
-            default="Harian",
-            key=f"tampilan-grafik-{awalan}",
-            label_visibility="collapsed",
-        ) or "Harian"
+        tampilan = (
+            st.segmented_control(
+                "Tampilan grafik",
+                options=list(TAMPILAN_GRAFIK),
+                default="Harian",
+                key=f"tampilan-grafik-{awalan}",
+                label_visibility="collapsed",
+            )
+            or "Harian"
+        )
         if tampilan == "Harian":
             ambang = ews.ambang_rupiah(slug, hasil.harga_sekarang) if hasil else None
             _gambar_chart(
@@ -211,7 +216,9 @@ def tampilkan_detail(slug: str) -> None:
             # Lintasan prediksi berskala HARIAN — menumpuknya di atas rata-rata
             # mingguan/bulanan akan menyambung dua skala yang berbeda.
             riwayat_ringkas, format_tanggal = _riwayat_tampilan(slug, tampilan)
-            _gambar_chart(riwayat_ringkas, komoditas.unit, format_tanggal=format_tanggal)
+            _gambar_chart(
+                riwayat_ringkas, komoditas.unit, format_tanggal=format_tanggal
+            )
             st.caption(
                 f"Rata-rata harga per {'minggu' if tampilan == 'Mingguan' else 'bulan'}. "
                 "Garis prediksi dan ambang batas tampil di grafik Harian."
@@ -219,6 +226,8 @@ def tampilkan_detail(slug: str) -> None:
 
     # `komoditas_dipilih` masih berisi slug halaman ini, jadi halaman Performa
     # Model langsung membuka komoditas yang sama tanpa perlu dipilih ulang.
-    if st.button("📊 Lihat performa model prediksi", width="stretch", key=f"performa-{awalan}"):
+    if st.button(
+        "📊 Lihat performa model prediksi", width="stretch", key=f"performa-{awalan}"
+    ):
         st.session_state["komoditas_dipilih"] = slug
         st.switch_page("views/performa_model.py")

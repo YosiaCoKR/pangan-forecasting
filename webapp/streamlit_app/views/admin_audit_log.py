@@ -62,7 +62,14 @@ else:
         with kolom_aksi:
             aksi_terpilih = st.selectbox(
                 "Aksi",
-                options=["Semua", "Masuk", "Keluar", "Harga diperbarui", "Model diubah", "Ambang diubah"],
+                options=[
+                    "Semua",
+                    "Masuk",
+                    "Keluar",
+                    "Harga diperbarui",
+                    "Model diubah",
+                    "Ambang diubah",
+                ],
             )
         with kolom_tanggal:
             rentang_tanggal = st.date_input(
@@ -74,7 +81,11 @@ else:
 
         baris_terfilter = baris
         if aksi_terpilih != "Semua":
-            baris_terfilter = [b for b in baris_terfilter if b["aksi"] == _AKSI_DARI_LABEL[aksi_terpilih]]
+            baris_terfilter = [
+                b
+                for b in baris_terfilter
+                if b["aksi"] == _AKSI_DARI_LABEL[aksi_terpilih]
+            ]
 
         # `st.date_input` mode rentang mengembalikan tuple 1 elemen selagi
         # pengguna baru memilih tanggal awal (belum pilih tanggal akhir) —
@@ -83,7 +94,9 @@ else:
         if isinstance(rentang_tanggal, tuple) and len(rentang_tanggal) == 2:
             mulai, akhir = rentang_tanggal
             baris_terfilter = [
-                b for b in baris_terfilter if mulai <= datetime.fromisoformat(b["waktu"]).date() <= akhir
+                b
+                for b in baris_terfilter
+                if mulai <= datetime.fromisoformat(b["waktu"]).date() <= akhir
             ]
 
         if not baris_terfilter:
@@ -95,12 +108,16 @@ else:
             if len(baris_terfilter) == len(baris):
                 st.caption(f"Menampilkan semua {len(baris)} aktivitas.")
             else:
-                st.caption(f"Menampilkan {len(baris_terfilter)} dari {len(baris)} aktivitas.")
+                st.caption(
+                    f"Menampilkan {len(baris_terfilter)} dari {len(baris)} aktivitas."
+                )
 
             st.dataframe(
                 [
                     {
-                        "Waktu": datetime.fromisoformat(b["waktu"]).strftime("%d %b %Y, %H:%M:%S"),
+                        "Waktu": datetime.fromisoformat(b["waktu"]).strftime(
+                            "%d %b %Y, %H:%M:%S"
+                        ),
                         "Aksi": _LABEL_AKSI.get(b["aksi"], b["aksi"]),
                         "Detail": b["detail"] or "—",
                         "Sesi": b["sesi"],

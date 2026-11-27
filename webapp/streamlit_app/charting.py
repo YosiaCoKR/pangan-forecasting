@@ -9,8 +9,6 @@ terbaca — komoditas Rp 50–70rb tidak jadi terlihat rata seperti garis lurus.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -60,11 +58,11 @@ def gambar_grafik_harga(
     unit: str,
     *,
     height: int = 380,
-    trajektori_prediksi: Optional[pd.Series] = None,
-    prediksi_label: Optional[str] = None,
-    prediksi_persen: Optional[float] = None,
+    trajektori_prediksi: pd.Series | None = None,
+    prediksi_label: str | None = None,
+    prediksi_persen: float | None = None,
     sorot_peringatan: bool = False,
-    garis_ambang: Optional[float] = None,
+    garis_ambang: float | None = None,
     format_tanggal: str = "%d %b",
 ) -> None:
     """Gambar grafik garis harga historis, dengan lintasan prediksi harian opsional.
@@ -97,7 +95,7 @@ def gambar_grafik_harga(
             x=riwayat["tanggal"],
             y=riwayat["harga"],
             mode="lines",
-            line=dict(color=w["historis"], width=2),
+            line={"color": w["historis"], "width": 2},
             name="Harga historis",
             hovertemplate="%{x|%d %b %Y}<br>Rp %{y:,.0f}<extra></extra>",
         )
@@ -107,7 +105,11 @@ def gambar_grafik_harga(
             x=[tanggal_akhir],
             y=[harga_akhir],
             mode="markers",
-            marker=dict(size=8, color=w["historis"], line=dict(width=2, color=w["latar"])),
+            marker={
+                "size": 8,
+                "color": w["historis"],
+                "line": {"width": 2, "color": w["latar"]},
+            },
             showlegend=False,
             hoverinfo="skip",
         )
@@ -127,7 +129,7 @@ def gambar_grafik_harga(
             yanchor="bottom",
             xshift=10,
             yshift=6,
-            font=dict(color=w["teks_primer"], size=12),
+            font={"color": w["teks_primer"], "size": 12},
         )
 
     if ada_prediksi:
@@ -138,13 +140,13 @@ def gambar_grafik_harga(
                 x=x_prediksi,
                 y=y_prediksi,
                 mode="lines+markers",
-                line=dict(color=w["prediksi"], width=2, dash="dash"),
-                marker=dict(
-                    size=5,
-                    symbol="diamond",
-                    color=w["prediksi"],
-                    line=dict(width=1, color=w["latar"]),
-                ),
+                line={"color": w["prediksi"], "width": 2, "dash": "dash"},
+                marker={
+                    "size": 5,
+                    "symbol": "diamond",
+                    "color": w["prediksi"],
+                    "line": {"width": 1, "color": w["latar"]},
+                },
                 name=prediksi_label or "Prediksi",
                 hovertemplate="%{x|%d %b %Y}<br>Prediksi: Rp %{y:,.0f}<extra></extra>",
             )
@@ -163,7 +165,7 @@ def gambar_grafik_harga(
             yanchor="top",
             xshift=10,
             yshift=-6,
-            font=dict(color=w["teks_primer"], size=12),
+            font={"color": w["teks_primer"], "size": 12},
         )
 
         if sorot_peringatan:
@@ -172,7 +174,12 @@ def gambar_grafik_harga(
                     x=[prediksi_tanggal_akhir],
                     y=[prediksi_harga_akhir],
                     mode="markers",
-                    marker=dict(size=18, symbol="circle-open", color=w["peringatan"], line=dict(width=3)),
+                    marker={
+                        "size": 18,
+                        "symbol": "circle-open",
+                        "color": w["peringatan"],
+                        "line": {"width": 3},
+                    },
                     name="⚠️ Memicu peringatan",
                     hoverinfo="skip",
                 )
@@ -185,14 +192,14 @@ def gambar_grafik_harga(
                 x=[riwayat["tanggal"].iloc[0], x_akhir],
                 y=[garis_ambang, garis_ambang],
                 mode="lines",
-                line=dict(color=w["peringatan"], width=1.5, dash="dot"),
+                line={"color": w["peringatan"], "width": 1.5, "dash": "dot"},
                 name=f"Ambang batas (Rp {format_rupiah(garis_ambang)})",
                 hovertemplate="Ambang: Rp %{y:,.0f}<extra></extra>",
             )
         )
 
     fig.update_layout(
-        margin=dict(l=90, r=110, t=10, b=40),
+        margin={"l": 90, "r": 110, "t": 10, "b": 40},
         height=height,
         xaxis_title="Tanggal",
         yaxis_title=f"Harga (Rp/{unit})",
@@ -206,22 +213,22 @@ def gambar_grafik_harga(
         # judul sumbu-Y. Trace ambang batas (Fase 3) akan otomatis ikut masuk
         # legend ini begitu ditambahkan, tanpa perlu ubahan lagi di sini.
         showlegend=True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="left",
-            x=0,
-            bgcolor="rgba(0,0,0,0)",
-            font=dict(color=w["teks_muted"], size=12),
-        ),
+        legend={
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
+            "xanchor": "left",
+            "x": 0,
+            "bgcolor": "rgba(0,0,0,0)",
+            "font": {"color": w["teks_muted"], "size": 12},
+        },
         separators=",.",
-        hoverlabel=dict(
-            bgcolor=w["tooltip"],
-            bordercolor=w["tooltip_border"],
-            font=dict(color=w["teks_primer"], size=13),
-        ),
-        font=dict(color=w["teks_muted"], family="Geist, sans-serif"),
+        hoverlabel={
+            "bgcolor": w["tooltip"],
+            "bordercolor": w["tooltip_border"],
+            "font": {"color": w["teks_primer"], "size": 13},
+        },
+        font={"color": w["teks_muted"], "family": "Geist, sans-serif"},
     )
     fig.update_xaxes(
         tickformat=format_tanggal,

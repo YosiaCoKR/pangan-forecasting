@@ -34,7 +34,9 @@ assert not tak_dikenal, f"model_terbaik tak dikenal: {tak_dikenal}"
 # --- kolom turunan konsisten dengan model pemenang tiap baris ---
 for nama in nama_komoditas:
     metrik = metrik_model.metrik_komoditas(nama)
-    assert len(metrik) == len(forecast.HORIZON_TERSEDIA), f"{nama}: jumlah horizon salah"
+    assert len(metrik) == len(forecast.HORIZON_TERSEDIA), (
+        f"{nama}: jumlah horizon salah"
+    )
     for _, baris in metrik.iterrows():
         kunci = "lightgbm" if baris["model_terbaik"] == "LightGBM" else "xgboost"
         assert baris["mape_terbaik"] == baris[f"mape_{kunci}"], (

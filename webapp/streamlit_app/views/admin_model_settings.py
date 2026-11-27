@@ -19,9 +19,10 @@ baris tabel ini ikut berubah sendiri.
 
 from __future__ import annotations
 
-import forecast
 import pandas as pd
 import streamlit as st
+
+import forecast
 from auth import require_admin, sesi_admin_saat_ini, tombol_logout
 from config import get_model_per_komoditas, set_model_aktif, set_model_komoditas
 from data.mock_commodities import get_komoditas_list
@@ -53,45 +54,44 @@ slot_model_aktif = st.container()
 
 st.markdown("#### Model Default Global")
 _, kolom_form, _ = st.columns([1, 1.6, 1])
-with kolom_form:
-    with st.container(border=True):
-        model_aktif_sekarang = forecast.model_aktif().kunci
-        kunci_terpilih = st.selectbox(
-            "Pilih model default",
-            options=kunci_model_list,
-            index=kunci_model_list.index(model_aktif_sekarang),
-            format_func=lambda kunci: forecast.MODEL_TERSEDIA[kunci].nama,
-        )
-        model_terpilih = forecast.MODEL_TERSEDIA[kunci_terpilih]
-        st.caption(
-            f"{model_terpilih.deskripsi} · artefak di `research/{model_terpilih.folder}/`"
-        )
+with kolom_form, st.container(border=True):
+    model_aktif_sekarang = forecast.model_aktif().kunci
+    kunci_terpilih = st.selectbox(
+        "Pilih model default",
+        options=kunci_model_list,
+        index=kunci_model_list.index(model_aktif_sekarang),
+        format_func=lambda kunci: forecast.MODEL_TERSEDIA[kunci].nama,
+    )
+    model_terpilih = forecast.MODEL_TERSEDIA[kunci_terpilih]
+    st.caption(
+        f"{model_terpilih.deskripsi} · artefak di `research/{model_terpilih.folder}/`"
+    )
 
-        # Slot juga, supaya peringatan "belum disimpan" langsung hilang di run
-        # yang sama begitu tombol Simpan ditekan (bukan baru di rerun berikutnya).
-        slot_peringatan = st.container()
+    # Slot juga, supaya peringatan "belum disimpan" langsung hilang di run
+    # yang sama begitu tombol Simpan ditekan (bukan baru di rerun berikutnya).
+    slot_peringatan = st.container()
 
-        if st.button("Simpan Model Default", width="stretch"):
-            if kunci_terpilih == model_aktif_sekarang:
-                st.info("Model ini sudah jadi default.")
-            else:
-                set_model_aktif(kunci_terpilih)
-                catat_aktivitas_admin(
-                    "model_diubah",
-                    sesi_admin_saat_ini(),
-                    detail=f"default global: {model_aktif_sekarang} -> {kunci_terpilih}",
-                )
-                # Prediksi lama masih tersimpan di `st.cache_data` dengan kunci
-                # model LAMA, jadi cukup dibiarkan — kunjungan berikutnya memakai
-                # `kunci_model` baru dan otomatis menghitung ulang.
-                st.success(f"Model default diubah ke **{model_terpilih.nama}**.")
+    if st.button("Simpan Model Default", width="stretch"):
+        if kunci_terpilih == model_aktif_sekarang:
+            st.info("Model ini sudah jadi default.")
+        else:
+            set_model_aktif(kunci_terpilih)
+            catat_aktivitas_admin(
+                "model_diubah",
+                sesi_admin_saat_ini(),
+                detail=f"default global: {model_aktif_sekarang} -> {kunci_terpilih}",
+            )
+            # Prediksi lama masih tersimpan di `st.cache_data` dengan kunci
+            # model LAMA, jadi cukup dibiarkan — kunjungan berikutnya memakai
+            # `kunci_model` baru dan otomatis menghitung ulang.
+            st.success(f"Model default diubah ke **{model_terpilih.nama}**.")
 
-        model_aktif_terkini = forecast.model_aktif().kunci
-        if kunci_terpilih != model_aktif_terkini:
-            with slot_peringatan:
-                st.warning(
-                    "⚠️ Perubahan belum disimpan. Klik **Simpan Model Default** untuk menerapkan."
-                )
+    model_aktif_terkini = forecast.model_aktif().kunci
+    if kunci_terpilih != model_aktif_terkini:
+        with slot_peringatan:
+            st.warning(
+                "⚠️ Perubahan belum disimpan. Klik **Simpan Model Default** untuk menerapkan."
+            )
 
 st.markdown("#### Model per Komoditas")
 komoditas_list = get_komoditas_list()

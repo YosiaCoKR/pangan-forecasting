@@ -59,7 +59,7 @@ def _muat_config() -> dict:
         try:
             with open(_CONFIG_PATH, encoding="utf-8") as berkas:
                 return {**_DEFAULT_CONFIG, **json.load(berkas)}
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             # config.json rusak/kosong (mis. proses server terhenti di tengah
             # penulisan) — jangan sampai seluruh halaman admin ikut error,
             # kembali ke default dan biarkan admin menyimpan ulang pilihannya.
@@ -92,13 +92,20 @@ def get_ambang_ews(slug: str) -> dict:
     """Ambang EWS (`harga_tetap`, `persen_kenaikan`) untuk satu komoditas —
     nilai default kalau belum pernah diubah admin lewat Pengaturan Ambang."""
     ambang = _muat_config()["ambang_ews"]
-    return ambang.get(slug, {"harga_tetap": None, "persen_kenaikan": _PERSEN_KENAIKAN_DEFAULT})
+    return ambang.get(
+        slug, {"harga_tetap": None, "persen_kenaikan": _PERSEN_KENAIKAN_DEFAULT}
+    )
 
 
-def set_ambang_ews(slug: str, *, harga_tetap: float | None, persen_kenaikan: float | None) -> None:
+def set_ambang_ews(
+    slug: str, *, harga_tetap: float | None, persen_kenaikan: float | None
+) -> None:
     """Simpan ambang EWS satu komoditas — komoditas lain tidak ikut berubah."""
     config = _muat_config()
-    config["ambang_ews"][slug] = {"harga_tetap": harga_tetap, "persen_kenaikan": persen_kenaikan}
+    config["ambang_ews"][slug] = {
+        "harga_tetap": harga_tetap,
+        "persen_kenaikan": persen_kenaikan,
+    }
     _simpan_config(config)
 
 

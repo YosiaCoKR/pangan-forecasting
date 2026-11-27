@@ -74,21 +74,18 @@ def _tampilan_sudah_masuk() -> None:
     )
 
     kolom_b, kolom_c, kolom_d = st.columns(3)
-    with kolom_b:
-        with st.container(border=True):
-            st.markdown("#### ⚙️ Pengaturan Model")
-            st.caption("Lihat model aktif & ganti dengan model lain yang tersedia.")
-            st.page_link("views/admin_model_settings.py", label="Buka halaman", icon="➡️")
-    with kolom_c:
-        with st.container(border=True):
-            st.markdown("#### 🚨 Pengaturan Ambang")
-            st.caption("Atur ambang batas peringatan dini harga tiap komoditas.")
-            st.page_link("views/admin_ambang_settings.py", label="Buka halaman", icon="➡️")
-    with kolom_d:
-        with st.container(border=True):
-            st.markdown("#### 🗂️ Audit Log")
-            st.caption("Lihat riwayat login & logout admin.")
-            st.page_link("views/admin_audit_log.py", label="Buka halaman", icon="➡️")
+    with kolom_b, st.container(border=True):
+        st.markdown("#### ⚙️ Pengaturan Model")
+        st.caption("Lihat model aktif & ganti dengan model lain yang tersedia.")
+        st.page_link("views/admin_model_settings.py", label="Buka halaman", icon="➡️")
+    with kolom_c, st.container(border=True):
+        st.markdown("#### 🚨 Pengaturan Ambang")
+        st.caption("Atur ambang batas peringatan dini harga tiap komoditas.")
+        st.page_link("views/admin_ambang_settings.py", label="Buka halaman", icon="➡️")
+    with kolom_d, st.container(border=True):
+        st.markdown("#### 🗂️ Audit Log")
+        st.caption("Lihat riwayat login & logout admin.")
+        st.page_link("views/admin_audit_log.py", label="Buka halaman", icon="➡️")
 
     tombol_logout()
 

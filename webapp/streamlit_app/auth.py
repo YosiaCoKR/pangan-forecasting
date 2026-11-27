@@ -55,7 +55,9 @@ from db import catat_aktivitas_admin
 load_dotenv(Path(__file__).parent / ".env")
 
 _SESI_ID_KEY = "admin_sesi_id"
-_SESI_BERAKHIR_KEY = "admin_sesi_berakhir"  # penanda pesan "sesi habis" di halaman login
+_SESI_BERAKHIR_KEY = (
+    "admin_sesi_berakhir"  # penanda pesan "sesi habis" di halaman login
+)
 _TIMEOUT_IDLE = 15 * 60  # detik tanpa aktivitas sebelum sesi gugur
 _TIMEOUT_ABSOLUT = 8 * 60 * 60  # umur maksimum sesi sejak login, walau terus aktif
 
@@ -197,7 +199,7 @@ def sesi_admin_saat_ini() -> str:
 
 
 def login(username: str, kata_sandi: str) -> bool:
-    """"Endpoint" login admin — verifikasi username + kata sandi & aktifkan sesi.
+    """ "Endpoint" login admin — verifikasi username + kata sandi & aktifkan sesi.
 
     Aplikasi ini adalah Streamlit monolith tanpa server API terpisah (sesuai
     arsitektur PRD): "endpoint" di sini adalah fungsi Python yang dipanggil

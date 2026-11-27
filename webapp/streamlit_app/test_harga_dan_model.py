@@ -38,7 +38,7 @@ assert buat_slug("Beras Kualitas Bawah I") == "beras-kualitas-bawah-i"
 # Slug harus tetap cocok dengan kunci `ambang_ews` yang sudah tersimpan,
 # kalau tidak ambang EWS lama jadi tak terpakai tanpa ada yang sadar.
 ambang_lama = json.loads(Path("config.json").read_text(encoding="utf-8"))["ambang_ews"]
-assert set(k.slug for k in komoditas) == set(ambang_lama), (
+assert {k.slug for k in komoditas} == set(ambang_lama), (
     "slug bergeser dari kunci ambang_ews"
 )
 assert get_kategori_list(), "kategori tampilan tidak boleh kosong"
@@ -143,10 +143,14 @@ assert mock_prices.simpan_harga_banyak(harga_csv) == {slug_a: (1, 1)}
 riwayat_a = mock_prices.get_price_history(slug_a, hari=SEMUA)
 assert len(riwayat_a) == baris_a + 1
 assert float(riwayat_a["harga"].iloc[0]) == 14_000.0, "tanggal baru tidak ditambahkan"
-assert riwayat_a.loc[riwayat_a["tanggal"] == pd.Timestamp(tgl_timpa), "harga"].tolist() == [13_500.0]
+assert riwayat_a.loc[
+    riwayat_a["tanggal"] == pd.Timestamp(tgl_timpa), "harga"
+].tolist() == [13_500.0]
 assert riwayat_a["tanggal"].is_monotonic_increasing
 assert len(mock_prices.get_price_history(slug_b, hari=SEMUA)) == baris_b
-assert mock_prices.harga_terakhir(slug_b) == harga_b_lama, "sel kosong tidak boleh mengubah harga"
+assert mock_prices.harga_terakhir(slug_b) == harga_b_lama, (
+    "sel kosong tidak boleh mengubah harga"
+)
 
 for csv_rusak in (
     f"{nama_a}\n10\n",  # tanpa kolom tanggal

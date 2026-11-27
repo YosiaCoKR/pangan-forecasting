@@ -31,7 +31,9 @@ class HasilPeringatan:
     alasan: str | None  # "persen" | "harga_tetap" | None (tidak ada peringatan)
 
 
-def periksa_peringatan(riwayat: pd.DataFrame, slug: str, nama_komoditas: str) -> HasilPeringatan | None:
+def periksa_peringatan(
+    riwayat: pd.DataFrame, slug: str, nama_komoditas: str
+) -> HasilPeringatan | None:
     """Cek apakah prediksi H+30 komoditas ini melewati ambang EWS-nya.
 
     Mengembalikan `None` kalau prediksi H+30 gagal dihitung (model riset
@@ -43,7 +45,7 @@ def periksa_peringatan(riwayat: pd.DataFrame, slug: str, nama_komoditas: str) ->
         hasil = forecast.ramalkan_hasil_horizon(riwayat, nama_komoditas, HORIZON_EWS)
     except forecast.ModelRisetError:
         return None
-    except Exception:
+    except Exception:  # noqa: BLE001 — EWS gagal tak boleh menjatuhkan halaman
         return None
 
     ambang = config.get_ambang_ews(slug)
@@ -79,7 +81,12 @@ def ambang_rupiah(slug: str, harga_sekarang: float) -> tuple[float, str] | None:
     kandidat: list[tuple[float, str]] = []
     if ambang.get("persen_kenaikan") is not None:
         persen = float(ambang["persen_kenaikan"])
-        kandidat.append((harga_sekarang * (1 + persen / 100), f"naik {persen:g}% dari harga saat ini"))
+        kandidat.append(
+            (
+                harga_sekarang * (1 + persen / 100),
+                f"naik {persen:g}% dari harga saat ini",
+            )
+        )
     if ambang.get("harga_tetap") is not None:
         kandidat.append((float(ambang["harga_tetap"]), "batas harga tetap"))
     return min(kandidat) if kandidat else None

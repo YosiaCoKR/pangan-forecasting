@@ -10,10 +10,11 @@ Sumber angka sama: `metrik_model.muat_metrik()`.
 
 from __future__ import annotations
 
-import forecast
-import metrik_model
 import plotly.express as px
 import streamlit as st
+
+import forecast
+import metrik_model
 from auth import require_admin, tombol_logout
 from data.mock_commodities import get_komoditas_list
 
@@ -29,7 +30,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-nama_terpilih = st.selectbox("Komoditas", options=[k.nama for k in get_komoditas_list()])
+nama_terpilih = st.selectbox(
+    "Komoditas", options=[k.nama for k in get_komoditas_list()]
+)
 metrik = metrik_model.metrik_komoditas(nama_terpilih)
 if metrik.empty:
     st.warning("Metrik model belum tersedia untuk komoditas ini.")
@@ -54,7 +57,12 @@ data_grafik = metrik.assign(
     Horizon="H+" + metrik["horizon"].astype(str),
     LightGBM=metrik[f"{awalan}_lightgbm"] * skala,
     XGBoost=metrik[f"{awalan}_xgboost"] * skala,
-).melt(id_vars="Horizon", value_vars=["LightGBM", "XGBoost"], var_name="Model", value_name=label_metrik)
+).melt(
+    id_vars="Horizon",
+    value_vars=["LightGBM", "XGBoost"],
+    var_name="Model",
+    value_name=label_metrik,
+)
 st.plotly_chart(
     px.bar(data_grafik, x="Horizon", y=label_metrik, color="Model", barmode="group"),
     width="stretch",

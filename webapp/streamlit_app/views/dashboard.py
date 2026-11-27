@@ -55,9 +55,14 @@ def tampilkan_dashboard() -> None:
     nama_list = [k.komoditas.nama for k in kartu_list]
     slug_per_nama = {k.komoditas.nama: k.komoditas.slug for k in kartu_list}
     slug_awal = st.session_state.get("komoditas_dipilih")
-    nama_awal = next((n for n, s in slug_per_nama.items() if s == slug_awal), nama_list[0])
-    nama_terpilih = st.selectbox("Pilih komoditas", options=nama_list, index=nama_list.index(nama_awal))
+    nama_awal = next(
+        (n for n, s in slug_per_nama.items() if s == slug_awal), nama_list[0]
+    )
+    nama_terpilih = st.selectbox(
+        "Pilih komoditas", options=nama_list, index=nama_list.index(nama_awal)
+    )
     st.session_state["komoditas_dipilih"] = slug_per_nama[nama_terpilih]
     tampilkan_detail(slug_per_nama[nama_terpilih])
+
 
 tampilkan_dashboard()
