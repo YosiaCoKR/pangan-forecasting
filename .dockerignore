@@ -1,0 +1,15 @@
+*
+!requirements.txt
+!webapp/streamlit_app/
+!webapp/research/final_lgbm/
+!webapp/research/final_xgb/
+!webapp/research/dataset.csv
+
+**/.env
+**/.streamlit/secrets.toml
+
+**/__pycache__
+**/tracking.db*
+**/_scratch_*
+webapp/streamlit_app/config.json*
+webapp/streamlit_app/test_*.py
